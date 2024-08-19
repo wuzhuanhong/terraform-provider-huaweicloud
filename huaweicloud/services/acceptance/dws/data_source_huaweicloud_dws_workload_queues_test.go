@@ -9,18 +9,19 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccWorkloadQueuesDataSource_basic(t *testing.T) {
+func TestAccDataSourceWorkloadQueues_basic(t *testing.T) {
 	resourceName := "data.huaweicloud_dws_workload_queues.test"
 	dc := acceptance.InitDataSourceCheck(resourceName)
 	name := acceptance.RandomAccResourceName()
-	// The cluster password requires a minimum length of 12 characters, and the string 'gap' is used to fill in the gap.
-	password := acceptance.RandomPassword() + "gap"
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccWorkloadQueuesDataSourceBasic(name, password),
+				Config: testAccWorkloadQueuesDataSourceBasic(name),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(resourceName, "queues.#"),
@@ -33,23 +34,23 @@ func TestAccWorkloadQueuesDataSource_basic(t *testing.T) {
 	})
 }
 
-func testAccWorkloadQueuesDataSourceBasic(name, password string) string {
+func testAccWorkloadQueuesDataSourceBasic(name string) string {
 	return fmt.Sprintf(`
-%s
+%[1]s
 
 data "huaweicloud_dws_workload_queues" "test" {
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%[2]s"
 
   depends_on = [huaweicloud_dws_workload_queue.test]
 }
 
 data "huaweicloud_dws_workload_queues" "name_filter" {
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%[2]s"
   name       = huaweicloud_dws_workload_queue.test.name
 }
 
 data "huaweicloud_dws_workload_queues" "name_not_exist_filter" {
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%[2]s"
   name       = "name_not_exist"
 
   depends_on = [huaweicloud_dws_workload_queue.test]
@@ -75,5 +76,5 @@ output "name_filter_is_useful" {
 output "name_not_exist_filter_is_useful" {
   value = length(local.name_not_exist_filter) == 0
 }
-`, testAccWorkloadQueue_basic(name, password))
+`, testAccWorkloadQueue_basic(name), acceptance.HW_DWS_CLUSTER_ID)
 }

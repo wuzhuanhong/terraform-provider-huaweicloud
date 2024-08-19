@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/chnsz/golangsdk"
-	"github.com/chnsz/golangsdk/openstack/dws/v1/cluster"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -76,7 +75,11 @@ func TestAccDwsExtDataSource_basic(t *testing.T) {
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+			acceptance.TestAccPreCheckDwsClusterExtDataSource(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
@@ -84,7 +87,7 @@ func TestAccDwsExtDataSource_basic(t *testing.T) {
 				Config: testDwsExtDataSource_basic(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "cluster_id", "huaweicloud_dws_cluster.test", "id"),
+					resource.TestCheckResourceAttr(rName, "cluster_id", acceptance.HW_DWS_CLUSTER_ID),
 					resource.TestCheckResourceAttr(rName, "name", name),
 					resource.TestCheckResourceAttr(rName, "type", "MRS"),
 					resource.TestCheckResourceAttr(rName, "user_name", "admin"),
@@ -110,35 +113,37 @@ func TestAccDwsExtDataSource_basic(t *testing.T) {
 func testDwsExtDataSource_basic(name string) string {
 	pwd := acceptance.RandomPassword()
 	return fmt.Sprintf(`
-%s
-
-%s
+%[1]s
 
 resource "huaweicloud_dws_ext_data_source" "test" {
-  cluster_id     = huaweicloud_dws_cluster.test.id
-  name           = "%s"
+  cluster_id     = "%[2]s"
+  name           = "%[3]s"
   type           = "MRS"
   data_source_id = huaweicloud_mapreduce_cluster.test.id
   user_name      = "admin"
-  user_pwd       = "%s"
+  user_pwd       = "%[4]s"
   description    = "This is a demo"
 }
-`, testAccDwsCluster_basic(name, 3, cluster.PublicBindTypeNotUse, pwd, "bar"),
-		testDwsExtDataSourceMrs(name, pwd), name, pwd)
+`, testDwsExtDataSourceMrs(name, pwd), acceptance.HW_DWS_CLUSTER_ID, name, pwd)
 }
 
 func testDwsExtDataSourceMrs(rName, pwd string) string {
 	return fmt.Sprintf(`
+data "huaweicloud_availability_zones" "test" {}
+
+data "huaweicloud_vpc_subnet" "test" {
+  id = "%[1]s"
+}
 
 resource "huaweicloud_mapreduce_cluster" "test" {
   availability_zone  = data.huaweicloud_availability_zones.test.names[0]
-  name               = "%s"
+  name               = "%[2]s"
   type               = "ANALYSIS"
   version            = "MRS 1.9.2"
-  manager_admin_pass = "%s"
-  node_admin_pass    = "%s"
-  subnet_id          = huaweicloud_vpc_subnet.test.id
-  vpc_id             = huaweicloud_vpc.test.id
+  manager_admin_pass = "%[3]s"
+  node_admin_pass    = "%[3]s"
+  subnet_id          = "%[1]s"
+  vpc_id             = data.huaweicloud_vpc_subnet.test.vpc_id
   component_list     = ["Hadoop", "Hive", "Tez"]
 
   master_nodes {
@@ -168,16 +173,23 @@ resource "huaweicloud_mapreduce_cluster" "test" {
     data_volume_size  = 600
     data_volume_count = 1
   }
-}`, rName, pwd, pwd)
+}`, acceptance.HW_DWS_CLUSTER_USED_SUBNET_ID, rName, pwd)
+}
+
+func getAgencyNames() (agencyName, updateAgencyName string) {
+	agencyNames := strings.Split(acceptance.HW_DWS_OBS_AGENCY_NAMES, ",")
+	if len(agencyNames) < 2 {
+		return "", ""
+	}
+	return agencyNames[0], agencyNames[1]
 }
 
 func TestAccDwsExtDataSource_obs(t *testing.T) {
 	var (
-		obj              interface{}
-		name             = acceptance.RandomAccResourceName()
-		rName            = "huaweicloud_dws_ext_data_source.test"
-		agencyName       = acceptance.HW_DWS_OBS_AGENCY_NAME
-		updateAgencyName = acceptance.HW_DWS_UPDATE_OBS_AGENCY_NAME
+		obj                          interface{}
+		name                         = acceptance.RandomAccResourceName()
+		rName                        = "huaweicloud_dws_ext_data_source.test"
+		agencyName, updateAgencyName = getAgencyNames()
 	)
 
 	rc := acceptance.InitResourceCheck(
@@ -190,7 +202,7 @@ func TestAccDwsExtDataSource_obs(t *testing.T) {
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckDwsClusterId(t)
-			acceptance.TestAccPreCheckDwsExtDataSourceAgencyName(t)
+			acceptance.TestAccPreCheckDwsExtDataSourceAgencyNames(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),

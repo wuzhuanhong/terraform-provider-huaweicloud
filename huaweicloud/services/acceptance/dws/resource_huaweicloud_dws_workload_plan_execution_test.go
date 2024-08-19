@@ -71,7 +71,10 @@ func TestAccResourceWorkLoadPlanExecution_basic(t *testing.T) {
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
@@ -79,9 +82,9 @@ func TestAccResourceWorkLoadPlanExecution_basic(t *testing.T) {
 				Config: testAccWorkLoadPlanExecution_basic(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(resourceName, "cluster_id", "huaweicloud_dws_cluster.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "cluster_id", acceptance.HW_DWS_CLUSTER_ID),
 					resource.TestCheckResourceAttrPair(resourceName, "plan_id", "huaweicloud_dws_workload_plan.test", "id"),
-					resource.TestCheckResourceAttrPair(resourceName, "stage_id", "huaweicloud_dws_workload_plan_stage.test1", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, "stage_id", "huaweicloud_dws_workload_plan_stage.test.0", "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 				),
 			},
@@ -89,9 +92,9 @@ func TestAccResourceWorkLoadPlanExecution_basic(t *testing.T) {
 				Config: testAccWorkLoadPlanExecution_update(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(resourceName, "cluster_id", "huaweicloud_dws_cluster.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "cluster_id", acceptance.HW_DWS_CLUSTER_ID),
 					resource.TestCheckResourceAttrPair(resourceName, "plan_id", "huaweicloud_dws_workload_plan.test", "id"),
-					resource.TestCheckResourceAttrPair(resourceName, "stage_id", "huaweicloud_dws_workload_plan_stage.test2", "id"),
+					resource.TestCheckResourceAttrPair(resourceName, "stage_id", "huaweicloud_dws_workload_plan_stage.test.1", "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 				),
 			},
@@ -104,13 +107,15 @@ func testAccWorkLoadPlanExecution_base(name string) string {
 %[1]s
 %[2]s
 
-resource "huaweicloud_dws_workload_plan_stage" "test1" {
-  cluster_id = huaweicloud_dws_cluster.test.id
+resource "huaweicloud_dws_workload_plan_stage" "test" {
+  count      = 2
+  cluster_id = "%[4]s"
   plan_id    = huaweicloud_dws_workload_plan.test.id
-  name       = "%[3]s_1"
+  name       = "%[3]s_${count.index}"
   start_time = "07:00:00"
   end_time   = "08:00:00"
-  month      = "1"
+  # Multiple plan execution times cannot overlap.
+  month      = format("%%d", count.index + 1)
   day        = "1"
 
   queues {
@@ -138,42 +143,7 @@ resource "huaweicloud_dws_workload_plan_stage" "test1" {
     }
   }
 }
-
-resource "huaweicloud_dws_workload_plan_stage" "test2" {
-  cluster_id = huaweicloud_dws_cluster.test.id
-  plan_id    = huaweicloud_dws_workload_plan.test.id
-  name       = "%[3]s_2"
-  start_time = "07:00:00"
-  end_time   = "08:00:00"
-  month      = "2"
-  day        = "2"
-
-  queues {
-    name = huaweicloud_dws_workload_queue.test.name
-
-    configuration {
-      resource_name  = "cpu"
-      resource_value = 10
-    }
-    configuration {
-      resource_name  = "cpu_limit"
-      resource_value = 0
-    }
-    configuration {
-      resource_name  = "memory"
-      resource_value = 0
-    }
-    configuration {
-      resource_name  = "concurrency"
-      resource_value = 10
-    }
-    configuration {
-      resource_name  = "shortQueryConcurrencyNum"
-      resource_value = -1
-    }
-  }
-}
-`, testAccWorkLoadPlan_basic(name), testAccWorkloadPlanStage_base(name), name)
+`, testAccWorkLoadPlan_basic(name), testAccWorkloadPlanStage_base(name), name, acceptance.HW_DWS_CLUSTER_ID)
 }
 
 func testAccWorkLoadPlanExecution_basic(name string) string {
@@ -182,15 +152,14 @@ func testAccWorkLoadPlanExecution_basic(name string) string {
 
 resource "huaweicloud_dws_workload_plan_execution" "test" {
   depends_on = [
-    huaweicloud_dws_workload_plan_stage.test1,
-    huaweicloud_dws_workload_plan_stage.test2,
+    huaweicloud_dws_workload_plan_stage.test,
   ]
 
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%s"
   plan_id    = huaweicloud_dws_workload_plan.test.id
-  stage_id   = huaweicloud_dws_workload_plan_stage.test1.id
+  stage_id   = huaweicloud_dws_workload_plan_stage.test[0].id
 }
-`, testAccWorkLoadPlanExecution_base(name))
+`, testAccWorkLoadPlanExecution_base(name), acceptance.HW_DWS_CLUSTER_ID)
 }
 
 func testAccWorkLoadPlanExecution_update(name string) string {
@@ -199,13 +168,12 @@ func testAccWorkLoadPlanExecution_update(name string) string {
 
 resource "huaweicloud_dws_workload_plan_execution" "test" {
   depends_on = [
-    huaweicloud_dws_workload_plan_stage.test1,
-    huaweicloud_dws_workload_plan_stage.test2,
+    huaweicloud_dws_workload_plan_stage.test
   ]
 
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%s"
   plan_id    = huaweicloud_dws_workload_plan.test.id
-  stage_id   = huaweicloud_dws_workload_plan_stage.test2.id
+  stage_id   = huaweicloud_dws_workload_plan_stage.test[1].id
 }
-`, testAccWorkLoadPlanExecution_base(name))
+`, testAccWorkLoadPlanExecution_base(name), acceptance.HW_DWS_CLUSTER_ID)
 }

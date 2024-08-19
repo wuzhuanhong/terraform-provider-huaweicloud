@@ -374,9 +374,16 @@ var (
 	HW_IOTDA_ACCESS_ADDRESS      = os.Getenv("HW_IOTDA_ACCESS_ADDRESS")
 	HW_IOTDA_BATCHTASK_FILE_PATH = os.Getenv("HW_IOTDA_BATCHTASK_FILE_PATH")
 
-	HW_DWS_MUTIL_AZS            = os.Getenv("HW_DWS_MUTIL_AZS")
-	HW_DWS_CLUSTER_ID           = os.Getenv("HW_DWS_CLUSTER_ID")
-	HW_DWS_SNAPSHOT_POLICY_NAME = os.Getenv("HW_DWS_SNAPSHOT_POLICY_NAME")
+	HW_DWS_MUTIL_AZS               = os.Getenv("HW_DWS_MUTIL_AZS")
+	HW_DWS_CLUSTER_ID              = os.Getenv("HW_DWS_CLUSTER_ID")
+	HW_DWS_CLUSTER_USED_SUBNET_ID  = os.Getenv("HW_DWS_CLUSTER_USED_SUBNET_ID")
+	HW_DWS_LOGICAL_MODE_CLUSTER_ID = os.Getenv("HW_DWS_LOGICAL_MODE_CLUSTER_ID")
+	HW_DWS_LOGICAL_CLUSTER_ID      = os.Getenv("HW_DWS_LOGICAL_CLUSTER_ID")
+	HW_DWS_LOGICAL_CLUSTER_NAME    = os.Getenv("HW_DWS_LOGICAL_CLUSTER_NAME")
+	HW_DWS_SNAPSHOT_POLICY_NAME    = os.Getenv("HW_DWS_SNAPSHOT_POLICY_NAME")
+	// The OBS agency name list of the DWS data source. Using commas (,) to separate multiple names.
+	HW_DWS_OBS_AGENCY_NAMES = os.Getenv("HW_DWS_OBS_AGENCY_NAMES")
+	HW_DWS_CLUSTER_FLAG     = os.Getenv("HW_DWS_CLUSTER_FLAG")
 
 	HW_DCS_ACCOUNT_WHITELIST = os.Getenv("HW_DCS_ACCOUNT_WHITELIST")
 
@@ -1937,6 +1944,34 @@ func TestAccPreCheckDwsClusterId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDwsClusterExtDataSource(t *testing.T) {
+	if HW_DWS_CLUSTER_USED_SUBNET_ID == "" {
+		t.Skip("HW_DWS_CLUSTER_USED_SUBNET_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDwsLogicalModeClusterId(t *testing.T) {
+	if HW_DWS_LOGICAL_MODE_CLUSTER_ID == "" {
+		t.Skip("HW_DWS_LOGICAL_MODE_CLUSTER_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDwsLogicalClusterId(t *testing.T) {
+	if HW_DWS_LOGICAL_CLUSTER_ID == "" {
+		t.Skip("HW_DWS_LOGICAL_CLUSTER_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDwsLogicalClusterName(t *testing.T) {
+	if HW_DWS_LOGICAL_CLUSTER_NAME == "" {
+		t.Skip("HW_DWS_LOGICAL_CLUSTER_NAME must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckDwsSnapshotPolicyName(t *testing.T) {
 	if HW_DWS_SNAPSHOT_POLICY_NAME == "" {
 		t.Skip("HW_DWS_SNAPSHOT_POLICY_NAME must be set for the acceptance test")
@@ -1944,9 +1979,19 @@ func TestAccPreCheckDwsSnapshotPolicyName(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckDwsExtDataSourceAgencyName(t *testing.T) {
-	if HW_DWS_OBS_AGENCY_NAME == "" || HW_DWS_UPDATE_OBS_AGENCY_NAME == "" {
-		t.Skip("HW_DWS_OBS_AGENCY_NAME and HW_DWS_UPDATE_OBS_AGENCY_NAME must be set for the acceptance test")
+func TestAccPreCheckDwsExtDataSourceAgencyNames(t *testing.T) {
+	// Control OBS type data source acceptance test, one for creating resource and the other for updating resource.
+	agencyNames := strings.Split(HW_DWS_OBS_AGENCY_NAMES, ",")
+	if len(agencyNames) < 2 {
+		t.Skip("The length of HW_DWS_OBS_AGENCY_NAMES must be 2 for the OBS data source acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDwsClusterFlag(t *testing.T) {
+	// Used to control whether to create DWS clusters when running acceptance tests.
+	if HW_DWS_CLUSTER_FLAG == "" {
+		t.Skip("HW_DWS_CLUSTER_FLAG must be set for the acceptance test")
 	}
 }
 

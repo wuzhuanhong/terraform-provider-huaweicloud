@@ -12,7 +12,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -69,17 +68,20 @@ func TestAccResourceWorkloadQueue_basic(t *testing.T) {
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccWorkloadQueue_basic(name, "Admin_user@123"),
+				Config: testAccWorkloadQueue_basic(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "configuration.#", "4"),
-					resource.TestCheckResourceAttrPair(resourceName, "cluster_id", "huaweicloud_dws_cluster.test", "id"),
+					resource.TestCheckResourceAttr(resourceName, "cluster_id", acceptance.HW_DWS_CLUSTER_ID),
 				),
 			},
 			{
@@ -95,32 +97,10 @@ func TestAccResourceWorkloadQueue_basic(t *testing.T) {
 	})
 }
 
-func testAccWorkloadQueue_base(name, password string) string {
+func testAccWorkloadQueue_basic(name string) string {
 	return fmt.Sprintf(`
-%[1]s
-
-data "huaweicloud_availability_zones" "test" {}
-
-resource "huaweicloud_dws_cluster" "test" {
-  name              = "%[2]s"
-  node_type         = "dwsk2.xlarge"
-  number_of_node    = 3
-  vpc_id            = huaweicloud_vpc.test.id
-  network_id        = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-  availability_zone = data.huaweicloud_availability_zones.test.names[0]
-  user_name         = "admin_user"
-  user_pwd          = "%[3]s"
-}
-`, common.TestBaseNetwork(name), name, password)
-}
-
-func testAccWorkloadQueue_basic(name, password string) string {
-	return fmt.Sprintf(`
-%[1]s
-
 resource "huaweicloud_dws_workload_queue" "test" {
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%[1]s"
   name       = "%[2]s"
 
   configuration {
@@ -140,7 +120,7 @@ resource "huaweicloud_dws_workload_queue" "test" {
     resource_value = -1
   }
 }
-`, testAccWorkloadQueue_base(name, password), name)
+`, acceptance.HW_DWS_CLUSTER_ID, name)
 }
 
 func testWorkloadQueueImportState(name string) resource.ImportStateIdFunc {

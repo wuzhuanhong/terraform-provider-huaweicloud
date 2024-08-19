@@ -45,6 +45,13 @@ func getDisasterRecoveryTaskResourceFunc(cfg *config.Config, state *terraform.Re
 	}
 	return respBody, nil
 }
+
+// Before creating a disaster recovery task, ensure that the following conditions are consistent between the two clusters:
+// 1. Availability zone.
+// 2. Cluster type.
+// 3. Node specification.
+// 4. Number of nodes.
+// 5. Virtual private cloud.
 func TestAccResourceDisasterRecoveryTask_basic(t *testing.T) {
 	var (
 		obj          interface{}
@@ -58,9 +65,10 @@ func TestAccResourceDisasterRecoveryTask_basic(t *testing.T) {
 		getDisasterRecoveryTaskResourceFunc,
 	)
 
-	resource.ParallelTest(t, resource.TestCase{
+	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterFlag(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),

@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/chnsz/golangsdk"
-	"github.com/chnsz/golangsdk/openstack/dws/v1/cluster"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -61,7 +60,10 @@ func TestAccDwsSnapshot_basic(t *testing.T) {
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsLogicalModeClusterId(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
@@ -72,7 +74,7 @@ func TestAccDwsSnapshot_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "name", name),
 					resource.TestCheckResourceAttr(rName, "status", "AVAILABLE"),
 					resource.TestCheckResourceAttr(rName, "type", "MANUAL"),
-					resource.TestCheckResourceAttrPair(rName, "cluster_id", "huaweicloud_dws_cluster.test", "id"),
+					resource.TestCheckResourceAttr(rName, "cluster_id", acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID),
 					resource.TestCheckResourceAttrSet(rName, "started_at"),
 					resource.TestCheckResourceAttrSet(rName, "finished_at"),
 					resource.TestCheckResourceAttrSet(rName, "size"),
@@ -89,11 +91,9 @@ func TestAccDwsSnapshot_basic(t *testing.T) {
 
 func testDwsSnapshot_basic(name string) string {
 	return fmt.Sprintf(`
-%s
-
 resource "huaweicloud_dws_snapshot" "test" {
   name       = "%s"
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%s"
 }
-`, testAccDwsCluster_basic(name, 3, cluster.PublicBindTypeNotUse, "cluster123@!", "bar"), name)
+`, name, acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID)
 }

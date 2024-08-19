@@ -39,10 +39,9 @@ func TestAccDataSourceClusters_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(dataSource, "clusters.0.port"),
 					resource.TestCheckResourceAttrSet(dataSource, "clusters.0.version"),
 					resource.TestCheckResourceAttrSet(dataSource, "clusters.0.tags.%"),
-					resource.TestMatchResourceAttr(dataSource, "clusters.0.endpoints.#", regexp.MustCompile(`^[1-9]([0-9]*)?$`)),
 					resource.TestMatchResourceAttr(dataSource, "clusters.0.nodes.#", regexp.MustCompile(`^[1-9]([0-9]*)?$`)),
 					resource.TestCheckResourceAttrSet(dataSource, "clusters.0.status"),
-					resource.TestCheckResourceAttrSet(dataSource, "clusters.0.sub_status"),
+					// When creating a cluster, "sub_status" is null and "endpoints" is an empty array.
 					resource.TestMatchResourceAttr(dataSource, "clusters.0.created_at",
 						regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}?(Z|([+-]\d{2}:\d{2}))$`)),
 					resource.TestMatchResourceAttr(dataSource, "clusters.0.updated_at",
