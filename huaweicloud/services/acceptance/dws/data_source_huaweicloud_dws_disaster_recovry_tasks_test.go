@@ -9,18 +9,20 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccDisasterRecoveryTasksDataSource_basic(t *testing.T) {
+func TestAccDataSourceDisasterRecoveryTasks_basic(t *testing.T) {
 	resourceName := "data.huaweicloud_dws_disaster_recovery_tasks.name_filter"
 	dc := acceptance.InitDataSourceCheck(resourceName)
 	name := acceptance.RandomAccResourceName()
-	// The cluster password requires a minimum length of 12 characters, and the string 'gap' is used to fill in the gap.
-	password := acceptance.RandomPassword() + "gap"
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+			acceptance.TestAccPreCheckDwsLogicalModeClusterId(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDisasterRecoveryTasksDataSource_basic(name, password),
+				Config: testAccDisasterRecoveryTasksDataSource_basic(name),
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestCheckResourceAttrSet(resourceName, "tasks.#"),
@@ -45,9 +47,15 @@ func TestAccDisasterRecoveryTasksDataSource_basic(t *testing.T) {
 	})
 }
 
-func testAccDisasterRecoveryTasksDataSource_basic(name, password string) string {
+func testAccDisasterRecoveryTasksDataSource_basic(name string) string {
 	return fmt.Sprintf(`
-%s
+resource "huaweicloud_dws_disaster_recovery_task" "test" {
+  name               = "%[1]s"
+  dr_type            = "az"
+  primary_cluster_id = "%[2]s"
+  standby_cluster_id = "%[3]s"
+  dr_sync_period     = "2H"
+}
 
 data "huaweicloud_dws_disaster_recovery_tasks" "name_filter" {
   name = huaweicloud_dws_disaster_recovery_task.test.name
@@ -97,5 +105,5 @@ output "primary_cluster_name_result_is_useful" {
 output "standby_cluster_name_result_is_useful" {
   value = alltrue(local.standby_cluster_name_filter) && length(local.standby_cluster_name_filter) > 0
 }
-`, testAcDisasterRecoveryTask_basic(name, password))
+`, name, acceptance.HW_DWS_CLUSTER_ID, acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID)
 }

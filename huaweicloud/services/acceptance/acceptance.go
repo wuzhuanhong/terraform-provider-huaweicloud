@@ -409,15 +409,17 @@ var (
 
 	HW_DWS_MUTIL_AZS               = os.Getenv("HW_DWS_MUTIL_AZS")
 	HW_DWS_CLUSTER_ID              = os.Getenv("HW_DWS_CLUSTER_ID")
-	HW_DWS_LOGICAL_MODE_CLUSTER_ID = os.Getenv("HW_DWS_LOGICAL_MODE_CLUSTER_ID")
-	HW_DWS_LOGICAL_CLUSTER_NAME    = os.Getenv("HW_DWS_LOGICAL_CLUSTER_NAME")
 	HW_DWS_SNAPSHOT_POLICY_NAME    = os.Getenv("HW_DWS_SNAPSHOT_POLICY_NAME")
+	HW_DWS_LOGICAL_MODE_CLUSTER_ID = os.Getenv("HW_DWS_LOGICAL_MODE_CLUSTER_ID")
+	HW_DWS_LOGICAL_CLUSTER_ID      = os.Getenv("HW_DWS_LOGICAL_CLUSTER_ID")
+	HW_DWS_LOGICAL_CLUSTER_NAME    = os.Getenv("HW_DWS_LOGICAL_CLUSTER_NAME")
 	// The list of the user names under specified DWS cluster. Using commas (,) to separate multiple names.
-	HW_DWS_ASSOCIATE_USER_NAMES = os.Getenv("HW_DWS_ASSOCIATE_USER_NAMES")
-	// The OBS agency name list of the DWS data source. Using commas (,) to separate multiple names.
+	HW_DWS_ASSOCIATE_USER_NAMES  = os.Getenv("HW_DWS_ASSOCIATE_USER_NAMES")
 	HW_DWS_AUTOMATED_SNAPSHOT_ID = os.Getenv("HW_DWS_AUTOMATED_SNAPSHOT_ID")
-	HW_DWS_OBS_AGENCY_NAMES      = os.Getenv("HW_DWS_OBS_AGENCY_NAMES")
-	HW_DWS_CLUSTER_FLAG          = os.Getenv("HW_DWS_CLUSTER_FLAG")
+	// The OBS agency name list of the DWS data source. Using commas (,) to separate multiple names.
+	HW_DWS_OBS_AGENCY_NAMES       = os.Getenv("HW_DWS_OBS_AGENCY_NAMES")
+	HW_DWS_CLUSTER_USED_SUBNET_ID = os.Getenv("HW_DWS_CLUSTER_USED_SUBNET_ID")
+	HW_DWS_CLUSTER_FLAG           = os.Getenv("HW_DWS_CLUSTER_FLAG")
 
 	HW_DCS_ACCOUNT_WHITELIST = os.Getenv("HW_DCS_ACCOUNT_WHITELIST")
 
@@ -2126,9 +2128,23 @@ func TestAccPreCheckDwsClusterId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDwsClusterExtDataSource(t *testing.T) {
+	if HW_DWS_CLUSTER_USED_SUBNET_ID == "" {
+		t.Skip("HW_DWS_CLUSTER_USED_SUBNET_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckDwsLogicalModeClusterId(t *testing.T) {
 	if HW_DWS_LOGICAL_MODE_CLUSTER_ID == "" {
 		t.Skip("HW_DWS_LOGICAL_MODE_CLUSTER_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDwsLogicalClusterId(t *testing.T) {
+	if HW_DWS_LOGICAL_CLUSTER_ID == "" {
+		t.Skip("HW_DWS_LOGICAL_CLUSTER_ID must be set for the acceptance test")
 	}
 }
 

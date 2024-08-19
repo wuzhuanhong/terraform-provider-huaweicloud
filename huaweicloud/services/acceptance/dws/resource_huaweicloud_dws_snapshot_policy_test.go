@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/chnsz/golangsdk"
-	"github.com/chnsz/golangsdk/openstack/dws/v1/cluster"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
@@ -74,7 +73,10 @@ func TestAccDwsSnapshotPolicy_basic(t *testing.T) {
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
@@ -85,7 +87,7 @@ func TestAccDwsSnapshotPolicy_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(rName, "name", name),
 					resource.TestCheckResourceAttr(rName, "type", "full"),
 					resource.TestCheckResourceAttr(rName, "strategy", "0 8 6 4 * ?"),
-					resource.TestCheckResourceAttrPair(rName, "cluster_id", "huaweicloud_dws_cluster.test", "id"),
+					resource.TestCheckResourceAttr(rName, "cluster_id", acceptance.HW_DWS_CLUSTER_ID),
 				),
 			},
 			{
@@ -100,15 +102,13 @@ func TestAccDwsSnapshotPolicy_basic(t *testing.T) {
 
 func testDwsSnapshotPolicy_basic(name string) string {
 	return fmt.Sprintf(`
-%s
-
 resource "huaweicloud_dws_snapshot_policy" "test" {
   name       = "%s"
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%s"
   type       = "full"
   strategy   = "0 8 6 4 * ?"
 }
-`, testAccDwsCluster_basic_step1(name, 3, cluster.PublicBindTypeNotUse, "cluster123@!"), name)
+`, name, acceptance.HW_DWS_CLUSTER_ID)
 }
 
 func testDwsSnapshotPolicyImportState(name string) resource.ImportStateIdFunc {
