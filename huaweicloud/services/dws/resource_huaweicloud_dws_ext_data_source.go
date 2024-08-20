@@ -328,8 +328,8 @@ func resourceDwsExtDataSourceUpdate(ctx context.Context, d *schema.ResourceData,
 func buildUpdateDwsExtDataSourceBodyParams(d *schema.ResourceData) map[string]interface{} {
 	bodyParams := map[string]interface{}{
 		"reconfigure": map[string]interface{}{
-			"reboot":    utils.ValueIgnoreEmpty(d.Get("reboot")),
-			"user_name": utils.ValueIgnoreEmpty(d.Get("user_name")),
+			"reboot": utils.ValueIgnoreEmpty(d.Get("reboot")),
+			"agency": utils.ValueIgnoreEmpty(d.Get("user_name")),
 		},
 	}
 	return bodyParams

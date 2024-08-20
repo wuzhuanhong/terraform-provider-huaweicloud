@@ -72,7 +72,7 @@ The following arguments are supported:
   -> The OBS data source is supported only in version 8.2.0 or later of cluster.
 
 * `user_name` - (Required, String) The user name of the external data source.  
-  It is OBS agency-name when **type** is **MRS**.
+  It is OBS agency-name when **type** is **OBS**.
 
   Changing this parameter will create a new resource.
 

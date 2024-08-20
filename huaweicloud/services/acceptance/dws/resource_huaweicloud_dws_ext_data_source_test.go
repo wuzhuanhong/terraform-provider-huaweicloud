@@ -171,6 +171,72 @@ resource "huaweicloud_mapreduce_cluster" "test" {
 }`, rName, pwd, pwd)
 }
 
+func TestAccDwsExtDataSource_obs(t *testing.T) {
+	var (
+		obj              interface{}
+		name             = acceptance.RandomAccResourceName()
+		rName            = "huaweicloud_dws_ext_data_source.test"
+		agencyName       = acceptance.HW_DWS_OBS_AGENCY_NAME
+		updateAgencyName = acceptance.HW_DWS_UPDATE_OBS_AGENCY_NAME
+	)
+
+	rc := acceptance.InitResourceCheck(
+		rName,
+		&obj,
+		getDwsExtDataSourceResourceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+			acceptance.TestAccPreCheckDwsExtDataSourceAgencyName(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testDwsExtDataSource_obs(name, agencyName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rName, "cluster_id", acceptance.HW_DWS_CLUSTER_ID),
+					resource.TestCheckResourceAttr(rName, "name", name),
+					resource.TestCheckResourceAttr(rName, "type", "OBS"),
+					resource.TestCheckResourceAttr(rName, "user_name", agencyName),
+					resource.TestCheckResourceAttr(rName, "connect_info", "gaussdb"),
+					resource.TestCheckResourceAttr(rName, "description", "Created by terraform script"),
+				),
+			},
+			{
+				Config: testDwsExtDataSource_obs(name, updateAgencyName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(rName, "user_name", updateAgencyName),
+				),
+			},
+			{
+				ResourceName:      rName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateIdFunc: testDwsExtDataSourceImportState(rName),
+			},
+		},
+	})
+}
+
+func testDwsExtDataSource_obs(name, agencyName string) string {
+	return fmt.Sprintf(`
+resource "huaweicloud_dws_ext_data_source" "test" {
+  cluster_id   = "%[1]s"
+  name         = "%[2]s"
+  type         = "OBS"
+  user_name    = "%[3]s"
+  connect_info = "gaussdb"
+  description  = "Created by terraform script"
+}
+`, acceptance.HW_DWS_CLUSTER_ID, name, agencyName)
+}
+
 func testDwsExtDataSourceImportState(name string) resource.ImportStateIdFunc {
 	return func(s *terraform.State) (string, error) {
 		rs, ok := s.RootModule().Resources[name]
