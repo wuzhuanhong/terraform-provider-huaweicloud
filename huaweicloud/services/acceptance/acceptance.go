@@ -1944,6 +1944,13 @@ func TestAccPreCheckDwsSnapshotPolicyName(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckDwsExtDataSourceAgencyName(t *testing.T) {
+	if HW_DWS_OBS_AGENCY_NAME == "" || HW_DWS_UPDATE_OBS_AGENCY_NAME == "" {
+		t.Skip("HW_DWS_OBS_AGENCY_NAME and HW_DWS_UPDATE_OBS_AGENCY_NAME must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckDCSAccountWhitelist(t *testing.T) {
 	if HW_DCS_ACCOUNT_WHITELIST == "" {
 		t.Skip("HW_DCS_ACCOUNT_WHITELIST must be set for the acceptance test")
