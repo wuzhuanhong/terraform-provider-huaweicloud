@@ -36,17 +36,20 @@ var requestOpts = golangsdk.RequestOpts{
 
 // @API DWS POST /v2/{project_id}/clusters/{cluster_id}/logical-clusters
 // @API DWS GET /v2/{project_id}/clusters/{cluster_id}/logical-clusters
+// @API DWS PUT /v2/{project_id}/clusters/{cluster_id}/logical-clusters/{logical_cluster_id}
 // @API DWS DELETE /v2/{project_id}/clusters/{cluster_id}/logical-clusters/{logical_cluster_id}
 func ResourceLogicalCluster() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceLogicalClusterCreate,
 		ReadContext:   resourceLogicalClusterRead,
+		UpdateContext: resourceLogicalClusterUpdate,
 		DeleteContext: resourceLogicalClusterDelete,
 		Importer: &schema.ResourceImporter{
 			StateContext: resourceLogicalClusterImportState,
 		},
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(10 * time.Minute),
+			Update: schema.DefaultTimeout(10 * time.Minute),
 			Delete: schema.DefaultTimeout(10 * time.Minute),
 		},
 
@@ -73,7 +76,6 @@ func ResourceLogicalCluster() *schema.Resource {
 				Type:        schema.TypeSet,
 				Elem:        logicalClusterRingsSchema(),
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the DWS cluster ring list information.`,
 			},
 			"status": {
@@ -112,7 +114,6 @@ func logicalClusterRingsSchema() *schema.Resource {
 				Type:        schema.TypeSet,
 				Elem:        logicalRingHostsSchema(),
 				Required:    true,
-				ForceNew:    true,
 				Description: `Indicates the cluster host ring information.`,
 			},
 		},
@@ -126,31 +127,26 @@ func logicalRingHostsSchema() *schema.Resource {
 			"host_name": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the host name.`,
 			},
 			"back_ip": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the backend IP address.`,
 			},
 			"cpu_cores": {
 				Type:        schema.TypeInt,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the number of CPU cores.`,
 			},
 			"memory": {
 				Type:        schema.TypeFloat,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the host memory.`,
 			},
 			"disk_size": {
 				Type:        schema.TypeFloat,
 				Required:    true,
-				ForceNew:    true,
 				Description: `Specifies the host disk size.`,
 			},
 		},
@@ -385,6 +381,138 @@ func flattenResponseBodyClusterRings(resp interface{}) []interface{} {
 	return rst
 }
 
+func resourceLogicalClusterUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	cfg := meta.(*config.Config)
+	client, err := cfg.NewServiceClient("dws", cfg.GetRegion(d))
+	if err != nil {
+		return diag.Errorf("error creating DWS client: %s", err)
+	}
+
+	if !d.HasChange("cluster_rings") {
+		return nil
+	}
+
+	// Does not support updating multiple clusters at the same time
+	if err = updateLogicalClusterHostRings(ctx, client, d); err != nil {
+		return diag.FromErr(err)
+	}
+	return resourceLogicalClusterRead(ctx, d, meta)
+}
+
+func updateLogicalClusterHostRings(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	clusterId := d.Get("cluster_id").(string)
+	config.MutexKV.Lock(clusterId)
+	defer config.MutexKV.Unlock(clusterId)
+
+	_, err := waitingForEditStateEnabled(ctx, client, d)
+	if err != nil {
+		return err
+	}
+
+	httpUrl := "v2/{project_id}/clusters/{cluster_id}/logical-clusters/{logical_cluster_id}"
+	updatePath := client.Endpoint + httpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{cluster_id}", clusterId)
+	updatePath = strings.ReplaceAll(updatePath, "{logical_cluster_id}", d.Id())
+	updateOpt := golangsdk.RequestOpts{
+		MoreHeaders:      requestOpts.MoreHeaders,
+		KeepResponseBody: true,
+		JSONBody: map[string]interface{}{
+			"cluster_rings": buildLogicalClusterRingsRequestBody(d.Get("cluster_rings")),
+		},
+	}
+	// When the cluster does not allow editing, the returned status code is 417.
+	_, err = client.Request("PUT", updatePath, &updateOpt)
+	if err != nil {
+		return fmt.Errorf("error updating DWS logical cluster: %s", err)
+	}
+
+	stateConf := &resource.StateChangeConf{
+		Pending:                   []string{"PENDING"},
+		Target:                    []string{"COMPLETED"},
+		Refresh:                   updateStatusRefreshFunc(client, d),
+		Timeout:                   d.Timeout(schema.TimeoutUpdate),
+		Delay:                     10 * time.Second,
+		PollInterval:              30 * time.Second,
+		ContinuousTargetOccurence: 2,
+	}
+	_, err = stateConf.WaitForStateContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error waiting for the updating DWS logical cluster completed: %s", err)
+	}
+	return nil
+
+}
+
+func waitingForEditStateEnabled(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData) (interface{}, error) {
+	expression := fmt.Sprintf("logical_clusters[?logical_cluster_id=='%s']|[0]", d.Id())
+	stateConf := &resource.StateChangeConf{
+		Pending: []string{"PENDING"},
+		Target:  []string{"COMPLETED"},
+		Refresh: func() (interface{}, string, error) {
+			clusterRespBody, err := readLogicalClusters(client, d)
+			if err != nil {
+				return nil, "ERROR", err
+			}
+
+			cluster := utils.PathSearch(expression, clusterRespBody, nil)
+			if cluster == nil {
+				return nil, "ERROR", golangsdk.ErrDefault404{}
+			}
+
+			enabled := utils.PathSearch("edit_enable", cluster, false).(bool)
+			if enabled {
+				return enabled, "COMPLETED", nil
+			}
+
+			return enabled, "PENDING", nil
+		},
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		Delay:        10 * time.Second,
+		PollInterval: 30 * time.Second,
+	}
+	return stateConf.WaitForStateContext(ctx)
+}
+
+func updateStatusRefreshFunc(client *golangsdk.ServiceClient, d *schema.ResourceData) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		clusterRespBody, err := readLogicalClusters(client, d)
+		if err != nil {
+			return nil, "ERROR", err
+		}
+
+		clusterName := d.Get("logical_cluster_name").(string)
+		expression := fmt.Sprintf("logical_clusters[?logical_cluster_name=='%s']|[0]", clusterName)
+		cluster := utils.PathSearch(expression, clusterRespBody, nil)
+		if cluster == nil {
+			return nil, "ERROR", golangsdk.ErrDefault404{}
+		}
+
+		completed := utils.PathSearch("action_info.completed", cluster, false).(bool)
+		result := utils.PathSearch("action_info.result", cluster, "").(string)
+
+		// The status of the logical cluster is as follows:
+		// "Failed", "Normal", "Unavailabel", "Redistributing:x%", "Redistribute_failed", "Unbalanced", "Stopped".
+		// Logical clusters need to be redistributed after shrinking or expanding.
+		// If there are redistributed logical clusters, the other logical clusters do not support the update operation.
+		status := utils.PathSearch("status", cluster, "").(string)
+		if !completed || utils.StrSliceContains([]string{"Redistributing"}, strings.Split(status, ":")[0]) {
+			return cluster, "PENDING", nil
+		}
+
+		if result == "failed" {
+			return cluster, "ERROR", fmt.Errorf("the DWS logical cluster (%s) is failed (%s)", clusterName,
+				utils.PathSearch("action_info.action_name", cluster, ""))
+		}
+
+		if result == "success" && status == "Normal" {
+			return cluster, "COMPLETED", nil
+		}
+
+		return cluster, status, nil
+	}
+}
+
 // waitingForDeleteStateEnable This method is used to wait for operable status before deleting.
 // Deleting operations can only be performed when `delete_enable` is true.
 func waitingForDeleteStateEnable(ctx context.Context, client *golangsdk.ServiceClient, d *schema.ResourceData,
@@ -443,7 +571,6 @@ func resourceLogicalClusterDelete(ctx context.Context, d *schema.ResourceData, m
 	// Cannot be deleted when there are other tasks being executed.
 	config.MutexKV.Lock(clusterId)
 	defer config.MutexKV.Unlock(clusterId)
-
 	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
 		return diag.Errorf("error creating DWS client: %s", err)
