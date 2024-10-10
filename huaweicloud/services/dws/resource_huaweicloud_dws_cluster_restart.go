@@ -80,7 +80,7 @@ func resourceClusterRestartCreate(ctx context.Context, d *schema.ResourceData, m
 	stateConf := &resource.StateChangeConf{
 		Pending:      []string{"PENDING"},
 		Target:       []string{"COMPLETED"},
-		Refresh:      refreshClusterStateFun(client, clusterId),
+		Refresh:      refreshClusterStateFun(client, clusterId, []string{"REBOOT_FAILURE"}),
 		Timeout:      d.Timeout(schema.TimeoutCreate),
 		Delay:        30 * time.Second,
 		PollInterval: 30 * time.Second,
@@ -95,7 +95,7 @@ func resourceClusterRestartCreate(ctx context.Context, d *schema.ResourceData, m
 	return nil
 }
 
-func refreshClusterStateFun(client *golangsdk.ServiceClient, clusterId string) resource.StateRefreshFunc {
+func refreshClusterStateFun(client *golangsdk.ServiceClient, clusterId string, unexpectStatus []string) resource.StateRefreshFunc {
 	return func() (interface{}, string, error) {
 		respBody, err := GetClusterInfoByClusterId(client, clusterId)
 		if err != nil {
@@ -109,7 +109,7 @@ func refreshClusterStateFun(client *golangsdk.ServiceClient, clusterId string) r
 			return respBody, "COMPLETED", nil
 		}
 
-		if utils.StrSliceContains([]string{"REBOOT_FAILURE"}, taskStatus) {
+		if utils.StrSliceContains(unexpectStatus, taskStatus) {
 			return respBody, taskStatus, nil
 		}
 
