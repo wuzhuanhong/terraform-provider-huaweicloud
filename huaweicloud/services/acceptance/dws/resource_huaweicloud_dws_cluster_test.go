@@ -47,6 +47,7 @@ func TestAccResourceCluster_basicV1(t *testing.T) {
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckMigrateEpsID(t)
+			acceptance.TestAccPreCheckDwsClusterFlag(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
@@ -250,6 +251,7 @@ func TestAccResourceCluster_basicV2(t *testing.T) {
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckMigrateEpsID(t)
+			acceptance.TestAccPreCheckDwsClusterFlag(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
@@ -486,6 +488,7 @@ func TestAccResourceCluster_basicV2_mutilAZs(t *testing.T) {
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckMutilAZ(t)
+			acceptance.TestAccPreCheckDwsClusterFlag(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),

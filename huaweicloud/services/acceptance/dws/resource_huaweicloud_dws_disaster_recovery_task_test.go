@@ -12,7 +12,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -45,6 +44,13 @@ func getDisasterRecoveryTaskResourceFunc(cfg *config.Config, state *terraform.Re
 	}
 	return respBody, nil
 }
+
+// Before creating a disaster recovery task, ensure that the following conditions are consistent between the two clusters:
+// 1. Availability zone.
+// 2. Cluster type.
+// 3. Node specification.
+// 4. Number of nodes.
+// 5. Virtual private cloud.
 func TestAccResourceDisasterRecoveryTask_basic(t *testing.T) {
 	var (
 		obj          interface{}
@@ -61,6 +67,8 @@ func TestAccResourceDisasterRecoveryTask_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
+			acceptance.TestAccPreCheckDwsLogicalModeClusterId(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
@@ -72,7 +80,9 @@ func TestAccResourceDisasterRecoveryTask_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", name),
 					resource.TestCheckResourceAttr(resourceName, "dr_sync_period", "2H"),
 					resource.TestCheckResourceAttrSet(resourceName, "created_at"),
+					resource.TestCheckResourceAttr(resourceName, "primary_cluster.0.id", acceptance.HW_DWS_CLUSTER_ID),
 					resource.TestCheckResourceAttrSet(resourceName, "primary_cluster.0.name"),
+					resource.TestCheckResourceAttr(resourceName, "standby_cluster.0.id", acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID),
 					resource.TestCheckResourceAttrSet(resourceName, "standby_cluster.0.name"),
 				),
 			},
@@ -104,78 +114,40 @@ func TestAccResourceDisasterRecoveryTask_basic(t *testing.T) {
 	})
 }
 
-func testAcDisasterRecoveryTask_base(name, password string) string {
-	return fmt.Sprintf(`
-%[1]s
-
-data "huaweicloud_availability_zones" "test" {}
-
-resource "huaweicloud_dws_cluster" "test" {
-  name              = "%[2]s-1"
-  node_type         = "dwsk2.xlarge"
-  number_of_node    = 3
-  vpc_id            = huaweicloud_vpc.test.id
-  network_id        = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-  availability_zone = data.huaweicloud_availability_zones.test.names[0]
-  user_name         = "admin_user"
-  user_pwd          = "%[3]s"
-}
-
-resource "huaweicloud_dws_cluster" "test1" {
-  name              = "%[2]s-2"
-  node_type         = "dwsk2.xlarge"
-  number_of_node    = 3
-  vpc_id            = huaweicloud_vpc.test.id
-  network_id        = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-  availability_zone = data.huaweicloud_availability_zones.test.names[0]
-  user_name         = "admin_user"
-  user_pwd          = "%[3]s"
-}
-`, common.TestBaseNetwork(name), name, password)
-}
-
 func testAcDisasterRecoveryTask_basic(name, password string) string {
 	return fmt.Sprintf(`
-%s
-
 resource "huaweicloud_dws_disaster_recovery_task" "test" {
-  name               = "%s"
+  name               = "%[1]s"
   dr_type            = "az"
-  primary_cluster_id = huaweicloud_dws_cluster.test.id
-  standby_cluster_id = huaweicloud_dws_cluster.test1.id
+  primary_cluster_id = "%[2]s"
+  standby_cluster_id = "%[3]s"
   dr_sync_period     = "2H"
 }
-`, testAcDisasterRecoveryTask_base(name, password), name)
+`, name, acceptance.HW_DWS_CLUSTER_ID, acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID)
 }
 
 func testAcDisasterRecoveryTask_update(name, password string) string {
 	return fmt.Sprintf(`
-%s
-
 resource "huaweicloud_dws_disaster_recovery_task" "test" {
-  name               = "%s"
+  name               = "%[1]s"
   dr_type            = "az"
-  primary_cluster_id = huaweicloud_dws_cluster.test.id
-  standby_cluster_id = huaweicloud_dws_cluster.test1.id
+  primary_cluster_id = "%[2]s"
+  standby_cluster_id = "%[3]s"
   dr_sync_period     = "3H"
   action             = "start"
 }
-`, testAcDisasterRecoveryTask_base(name, password), name)
+`, name, acceptance.HW_DWS_CLUSTER_ID, acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID)
 }
 
 func testAcDisasterRecoveryTask_switch(name, password string) string {
 	return fmt.Sprintf(`
-%s
-
 resource "huaweicloud_dws_disaster_recovery_task" "test" {
-  name               = "%s"
+  name               = "%[1]s"
   dr_type            = "az"
-  primary_cluster_id = huaweicloud_dws_cluster.test.id
-  standby_cluster_id = huaweicloud_dws_cluster.test1.id
+  primary_cluster_id = "%[2]s"
+  standby_cluster_id = "%[3]s"
   dr_sync_period     = "3H"
   action             = "switchover"
 }
-`, testAcDisasterRecoveryTask_base(name, password), name)
+`, name, acceptance.HW_DWS_CLUSTER_ID, acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID)
 }

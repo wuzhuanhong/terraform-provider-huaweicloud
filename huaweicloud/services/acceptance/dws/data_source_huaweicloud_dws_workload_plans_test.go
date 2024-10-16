@@ -24,7 +24,8 @@ func TestAccDataSourceWorkloadPlans_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckDwsClusterId(t)
+			acceptance.TestAccPreCheckDwsLogicalModeClusterId(t)
+			acceptance.TestAccPreCheckDwsLogicalClusterName(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
@@ -62,42 +63,10 @@ data "huaweicloud_dws_workload_plans" "test" {
 
 func testDataSourceDwsWorkloadPlans_base(name string) string {
 	return fmt.Sprintf(`
-data "huaweicloud_dws_logical_cluster_rings" "test" {
-  cluster_id = "%[1]s"
-}
-
-locals {
-  ring_hosts = [for v in data.huaweicloud_dws_logical_cluster_rings.test.cluster_rings : v.ring_hosts if v.is_available]
-}
-
-resource "huaweicloud_dws_logical_cluster" "test" {
-  cluster_id           = "%[1]s"
-  logical_cluster_name = "%[2]s"
-
-  cluster_rings {
-    dynamic "ring_hosts" {
-      for_each = local.ring_hosts[0]
-      content {
-        host_name = ring_hosts.value.host_name
-        back_ip   = ring_hosts.value.back_ip
-        cpu_cores = ring_hosts.value.cpu_cores
-        memory    = ring_hosts.value.memory
-        disk_size = ring_hosts.value.disk_size
-      }
-    }
-  }
-
-  lifecycle {
-    ignore_changes = [ 
-      cluster_rings,
-    ]
-  }
-}
-
 resource "huaweicloud_dws_workload_plan" "test" {
   cluster_id           = "%[1]s"
   name                 = "%[2]s"
-  logical_cluster_name = huaweicloud_dws_logical_cluster.test.logical_cluster_name
+  logical_cluster_name = "%[3]s"
 
   lifecycle {
     ignore_changes = [ 
@@ -109,7 +78,7 @@ resource "huaweicloud_dws_workload_plan" "test" {
 resource "huaweicloud_dws_workload_queue" "test" {
   cluster_id           = "%[1]s"
   name                 = "%[2]s"
-  logical_cluster_name = huaweicloud_dws_logical_cluster.test.logical_cluster_name
+  logical_cluster_name = "%[3]s"
 
   configuration {
     resource_name  = "cpu_limit"
@@ -175,7 +144,7 @@ resource "huaweicloud_dws_workload_plan_execution" "test" {
   plan_id    = huaweicloud_dws_workload_plan.test.id
   stage_id   = huaweicloud_dws_workload_plan_stage.test[0].id
 }
-`, acceptance.HW_DWS_CLUSTER_ID, name)
+`, acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID, name, acceptance.HW_DWS_LOGICAL_CLUSTER_NAME)
 }
 
 func testDataSourceWorkloadPlans_basic(name string) string {
@@ -200,12 +169,12 @@ data "huaweicloud_dws_workload_plans" "filter_by_logical_cluster_name" {
   ]
 
   cluster_id           = "%[2]s"
-  logical_cluster_name = huaweicloud_dws_logical_cluster.test.logical_cluster_name
+  logical_cluster_name = "%[3]s"
 }
 
 # The logical_cluster_name parameter is queried through exact match.
 output "is_userful_logical_cluster_name" {
   value = length(data.huaweicloud_dws_workload_plans.filter_by_logical_cluster_name.plans) == 1
 }
- `, testDataSourceDwsWorkloadPlans_base(name), acceptance.HW_DWS_CLUSTER_ID)
+ `, testDataSourceDwsWorkloadPlans_base(name), acceptance.HW_DWS_LOGICAL_MODE_CLUSTER_ID, acceptance.HW_DWS_LOGICAL_CLUSTER_NAME)
 }

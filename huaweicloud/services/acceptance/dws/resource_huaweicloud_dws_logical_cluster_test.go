@@ -74,7 +74,11 @@ func TestAccLogicalCluster_basic(t *testing.T) {
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
+			acceptance.TestAccPreCheckDwsClusterFlag(t)
+		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
@@ -124,7 +128,7 @@ func TestAccLogicalCluster_basic(t *testing.T) {
 }
 
 func testLogicalCluster_base(name string) string {
-	clusterBasic := testAccDwsCluster_basic_step1(name, 10, dws.PublicBindTypeAuto, "cluster123@!")
+	clusterBasic := testAccDwsCluster_basic_step1(name, 10, dws.PublicBindTypeNotUse, "cluster123@!")
 	return fmt.Sprintf(`
 %s
 

@@ -9,7 +9,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccEventSubscriptionsDataSource_basic(t *testing.T) {
+func TestAccDataSourceEventSubscriptions_basic(t *testing.T) {
 	resourceName := "data.huaweicloud_dws_event_subscriptions.name_filter"
 	dc := acceptance.InitDataSourceCheck(resourceName)
 	name := acceptance.RandomAccResourceName()

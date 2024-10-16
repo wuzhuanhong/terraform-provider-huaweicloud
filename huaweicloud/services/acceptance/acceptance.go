@@ -418,6 +418,8 @@ var (
 	HW_DWS_AUTOMATED_SNAPSHOT_ID = os.Getenv("HW_DWS_AUTOMATED_SNAPSHOT_ID")
 	// The OBS agency name list of the DWS data source. Using commas (,) to separate multiple names.
 	HW_DWS_OBS_AGENCY_NAMES = os.Getenv("HW_DWS_OBS_AGENCY_NAMES")
+	// Used to control whether to create DWS clusters when running acceptance tests.
+	HW_DWS_CLUSTER_FLAG = os.Getenv("HW_DWS_CLUSTER_FLAG")
 
 	HW_DCS_ACCOUNT_WHITELIST = os.Getenv("HW_DCS_ACCOUNT_WHITELIST")
 
@@ -2168,6 +2170,13 @@ func TestAccPreCheckDwsExtDataSourceAgencyNames(t *testing.T) {
 	agencyNames := strings.Split(HW_DWS_OBS_AGENCY_NAMES, ",")
 	if len(agencyNames) < 2 {
 		t.Skip("The length of HW_DWS_OBS_AGENCY_NAMES must be 2 for the OBS data source acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDwsClusterFlag(t *testing.T) {
+	if HW_DWS_CLUSTER_FLAG == "" {
+		t.Skip("HW_DWS_CLUSTER_FLAG must be set for the acceptance test")
 	}
 }
 

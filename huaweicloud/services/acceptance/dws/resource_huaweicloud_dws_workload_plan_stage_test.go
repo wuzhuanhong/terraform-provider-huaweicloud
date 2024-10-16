@@ -68,6 +68,7 @@ func TestAccResourceWorkLoadPlanStage_basic(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckDwsClusterId(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
@@ -94,7 +95,7 @@ func testAccWorkloadPlanStage_base(name string) string {
 	return fmt.Sprintf(`
 
 resource "huaweicloud_dws_workload_queue" "test" {
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%s"
   name       = "%s"
 
   configuration {
@@ -114,19 +115,19 @@ resource "huaweicloud_dws_workload_queue" "test" {
     resource_value = -1
   }
 }
-`, name)
+`, acceptance.HW_DWS_CLUSTER_ID, name)
 }
 
 func testAccWorkloadPlanStage_basic(name string) string {
 	return fmt.Sprintf(`
-%s
+%[1]s
 
-%s
+%[2]s
 
 resource "huaweicloud_dws_workload_plan_stage" "test" {
-  cluster_id = huaweicloud_dws_cluster.test.id
+  cluster_id = "%[3]s"
   plan_id    = huaweicloud_dws_workload_plan.test.id
-  name       = "%s"
+  name       = "%[4]s"
   start_time = "07:08:00"
   end_time   = "00:00:00"
 
@@ -155,7 +156,7 @@ resource "huaweicloud_dws_workload_plan_stage" "test" {
     }
   }
 }
-`, testAccWorkLoadPlan_basic(name), testAccWorkloadPlanStage_base(name), name)
+`, testAccWorkLoadPlan_basic(name), testAccWorkloadPlanStage_base(name), acceptance.HW_DWS_CLUSTER_ID, name)
 }
 
 func testWorkloadPlanStageImportState(name string) resource.ImportStateIdFunc {
