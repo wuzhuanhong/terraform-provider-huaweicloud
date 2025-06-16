@@ -19,7 +19,7 @@ resource "huaweicloud_networking_secgroup" "test" {
   delete_default_rules = true
 }
 
-data "huaweicloud_compute_flavors" "test" {
+data "huaweicloud_compute_flavors" "flavor" {
   availability_zone = data.huaweicloud_availability_zones.test.names[0]
   performance_type  = "normal"
   cpu_core_count    = 2
@@ -30,7 +30,7 @@ resource "huaweicloud_waf_dedicated_instance" "instance" {
   name                  = var.waf_dedicated_instance_name
   available_zone        = data.huaweicloud_availability_zones.test.names[0]
   specification_code    = var.waf_dedicated_instance_specification_code
-  ecs_flavor            = data.huaweicloud_compute_flavors.test.flavors[0].id
+  ecs_flavor            = data.huaweicloud_compute_flavors.flavor.flavors[0].id
   vpc_id                = huaweicloud_vpc.test.id
   subnet_id             = huaweicloud_vpc_subnet.test.id
   enterprise_project_id = var.enterprise_project_id
