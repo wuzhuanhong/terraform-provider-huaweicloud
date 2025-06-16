@@ -26,7 +26,7 @@ data "huaweicloud_compute_flavors" "test" {
   memory_size       = 4
 }
 
-resource "huaweicloud_waf_dedicated_instance" "test" {
+resource "huaweicloud_waf_dedicated_instance" "instance" {
   name                  = var.waf_dedicated_instance_name
   available_zone        = data.huaweicloud_availability_zones.test.names[0]
   specification_code    = var.waf_dedicated_instance_specification_code
@@ -45,5 +45,5 @@ resource "huaweicloud_waf_policy" "policy" {
   level = 1
 
   # Make sure that a dedicated instance has been created.
-  depends_on = [huaweicloud_waf_dedicated_instance.test]
+  depends_on = [huaweicloud_waf_dedicated_instance.instance]
 }
