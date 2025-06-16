@@ -5,10 +5,13 @@ jobs:
   terraform-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Action check
+      - uses: actions/checkout@v4
+
       - name: Terraform Scripts Lint
         uses: Lance52259/hcbp-scripts-lint@v1.1.1
-    with:
-        fail-on-error: 'true'
-        changed-files-only: 'true'
-        base-ref: 'origin/master'
+        with:
+          directory: 'examples'
+          fail-on-error: 'true'
+          changed-files-only: 'true'
+          base-ref: 'origin/master'
