@@ -11,3 +11,4 @@ jobs:
     with:
         fail-on-error: 'true'
         changed-files-only: 'true'
+        base-ref: 'origin/master'
