@@ -968,6 +968,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_eg_event_channels":        eg.DataSourceEventChannels(),
 			"huaweicloud_eg_event_sources":         eg.DataSourceEventSources(),
 			"huaweicloud_eg_event_streams":         eg.DataSourceEventStreams(),
+			"huaweicloud_eg_event_target_catalogs": eg.DataSourceEventTargetCatalogs(),
 
 			"huaweicloud_enterprise_project":        eps.DataSourceEnterpriseProject(),
 			"huaweicloud_enterprise_projects":       eps.DataSourceEnterpriseProjects(),
@@ -1037,10 +1038,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_gaussdb_redis_flavors":                geminidb.DataSourceGaussDBRedisFlavors(),
 			"huaweicloud_gaussdb_influx_instances":             geminidb.DataSourceGaussDBInfluxInstances(),
 
-			"huaweicloud_gaussdb_opengauss_storage_types":             gaussdb.DataSourceGaussdbOpengaussStorageTypes(),
-			"huaweicloud_gaussdb_opengauss_datastores":                gaussdb.DataSourceGaussdbOpengaussDatastores(),
-			"huaweicloud_gaussdb_opengauss_flavors":                   gaussdb.DataSourceGaussdbOpengaussFlavors(),
-			"huaweicloud_gaussdb_opengauss_available_flavors":         gaussdb.DataSourceGaussdbOpengaussAvailableFlavors(),
 			"huaweicloud_gaussdb_opengauss_instance":                  gaussdb.DataSourceOpenGaussInstance(),
 			"huaweicloud_gaussdb_opengauss_instances":                 gaussdb.DataSourceOpenGaussInstances(),
 			"huaweicloud_gaussdb_opengauss_instance_nodes":            gaussdb.DataSourceGaussdbOpengaussInstanceNodes(),
@@ -1387,10 +1384,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_rds_wal_log_replay_delay_status":       rds.DataSourceRdsWalLogReplayDelayStatus(),
 			"huaweicloud_rds_wal_log_recovery_time_window":      rds.DataSourceRdsWalLogRecoveryTimeWindow(),
 			"huaweicloud_rds_read_replica_restorable_databases": rds.DataSourceRdsReadReplicaRestorableDatabases(),
-			"huaweicloud_rds_backup_databases":                  rds.DataSourceRdsBackupDatabases(),
-
-			"huaweicloud_rms_policy_definitions":                       rms.DataSourcePolicyDefinitions(),
-			"huaweicloud_rms_assignment_package_templates":             rms.DataSourceTemplates(),
 			"huaweicloud_rms_regions":                                  rms.DataSourceRmsRegions(),
 			"huaweicloud_rms_services":                                 rms.DataSourceRmsServices(),
 			"huaweicloud_rms_interconnected_services":                  rms.DataSourceRmsInterconnectedServices(),
@@ -1735,11 +1728,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_dms_maintainwindow_v1": dms.DataSourceDmsMaintainWindow(),
 
 			"huaweicloud_dcs_maintainwindow_v1": dcs.DataSourceDcsMaintainWindow(),
-
-			"huaweicloud_dds_flavors_v3":               dds.DataSourceDDSFlavorV3(),
-			"huaweicloud_identity_role_v3":             iam.DataSourceIdentityRole(),
-			"huaweicloud_identity_virtual_mfa_devices": iam.DataSourceIamIdentityVirtualMfaDevices(),
-			"huaweicloud_cdm_flavors_v1":               cdm.DataSourceCdmFlavors(),
 
 			"huaweicloud_ddm_engines":                     ddm.DataSourceDdmEngines(),
 			"huaweicloud_ddm_flavors":                     ddm.DataSourceDdmFlavors(),
@@ -2761,10 +2749,6 @@ func Provider() *schema.Provider {
 			"huaweicloud_sdrs_replication_pair":                    sdrs.ResourceReplicationPair(),
 			"huaweicloud_sdrs_resize_replication":                  sdrs.ResourceResizeReplication(),
 
-			"huaweicloud_secmaster_incident":                    secmaster.ResourceIncident(),
-			"huaweicloud_secmaster_indicator":                   secmaster.ResourceIndicator(),
-			"huaweicloud_secmaster_alert_convert_incident":      secmaster.ResourceAlertConvertIncident(),
-			"huaweicloud_secmaster_alert":                       secmaster.ResourceAlert(),
 			"huaweicloud_secmaster_alert_rule":                  secmaster.ResourceAlertRule(),
 			"huaweicloud_secmaster_clone_playbook_version":      secmaster.ResourceClonePlaybookAndVersion(),
 			"huaweicloud_secmaster_data_object_relations":       secmaster.ResourceDataObjectRelations(),
