@@ -51,6 +51,8 @@ func TestAccKafkaInstance_prePaid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
 					resource.TestCheckResourceAttr(resourceName, "tags.owner", "terraform"),
 					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+					resource.TestCheckResourceAttr(resourceName, "maintain_begin", "06:00:00"),
+					resource.TestCheckResourceAttr(resourceName, "maintain_end", "10:00:00"),
 				),
 			},
 			{
@@ -62,6 +64,8 @@ func TestAccKafkaInstance_prePaid(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "tags.key1", "value"),
 					resource.TestCheckResourceAttr(resourceName, "tags.owner", "terraform_update"),
 					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+					resource.TestCheckResourceAttr(resourceName, "maintain_begin", "02:00:00"),
+					resource.TestCheckResourceAttr(resourceName, "maintain_end", "06:00:00"),
 				),
 			},
 			{
@@ -119,6 +123,8 @@ func TestAccKafkaInstance_newFormat(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "cross_vpc_accesses.2.advertised_ip", "192.168.0.53"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.name", "log.retention.hours"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.value", "48"),
+					resource.TestCheckResourceAttrSet(resourceName, "maintain_begin"),
+					resource.TestCheckResourceAttrSet(resourceName, "maintain_end"),
 				),
 			},
 			{
@@ -140,6 +146,8 @@ func TestAccKafkaInstance_newFormat(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "cross_vpc_accesses.3.advertised_ip", "192.168.0.63"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.name", "auto.create.groups.enable"),
 					resource.TestCheckResourceAttr(resourceName, "parameters.0.value", "false"),
+					resource.TestCheckResourceAttr(resourceName, "maintain_begin", "06:00:00"),
+					resource.TestCheckResourceAttr(resourceName, "maintain_end", "10:00:00"),
 				),
 			},
 		},
@@ -155,6 +163,7 @@ func TestAccKafkaInstance_publicIp(t *testing.T) {
 		&instance,
 		getKafkaInstanceFunc,
 	)
+	password := acceptance.RandomPassword()
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:          func() { acceptance.TestAccPreCheck(t) },
@@ -168,21 +177,44 @@ func TestAccKafkaInstance_publicIp(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
 					resource.TestCheckResourceAttr(resourceName, "broker_num", "3"),
 					resource.TestCheckResourceAttr(resourceName, "public_ip_ids.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "ssl_enable", "false"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.private_plain_enable", "true"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.public_plain_enable", "true"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.private_sasl_ssl_enable", "false"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.public_sasl_ssl_enable", "false"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.private_sasl_plaintext_enable", "false"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.public_sasl_plaintext_enable", "false"),
 				),
 			},
 			{
-				Config: testAccKafkaInstance_publicIp_update(rName, 5),
+				Config: testAccKafkaInstance_publicIp_update(rName, password, 5),
 				ExpectError: regexp.MustCompile("error resizing instance: the old EIP ID should not be changed, and the adding nums of " +
 					"EIP ID should be same as the adding broker nums"),
 			},
 			{
-				Config: testAccKafkaInstance_publicIp_update(rName, 4),
+				Config: testAccKafkaInstance_publicIp_update(rName, password, 4),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
 					resource.TestCheckResourceAttr(resourceName, "broker_num", "4"),
 					resource.TestCheckResourceAttr(resourceName, "public_ip_ids.#", "4"),
+					resource.TestCheckResourceAttr(resourceName, "ssl_enable", "true"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.private_plain_enable", "false"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.private_sasl_ssl_enable", "true"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.public_plain_enable", "false"),
+					resource.TestCheckResourceAttr(resourceName, "port_protocol.0.public_sasl_ssl_enable", "true"),
 				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"password",
+					"enabled_mechanisms",
+					"arch_type",
+					"new_tenant_ips",
+				},
 			},
 		},
 	})
@@ -282,6 +314,8 @@ resource "huaweicloud_dms_kafka_instance" "test" {
   password           = "Kafkatest@123"
   security_protocol  = "SASL_PLAINTEXT"
   enabled_mechanisms = ["SCRAM-SHA-512"]
+  maintain_begin     = "06:00:00"
+  maintain_end       = "10:00:00"
 
   cross_vpc_accesses {
     advertised_ip = "192.168.0.61"
@@ -336,6 +370,8 @@ resource "huaweicloud_dms_kafka_instance" "test" {
 
   manager_user     = "kafka-user"
   manager_password = "Kafkatest@123"
+  maintain_begin   = "06:00"
+  maintain_end     = "10:00"
 
   charging_mode = "prePaid"
   period_unit   = "month"
@@ -383,6 +419,8 @@ resource "huaweicloud_dms_kafka_instance" "test" {
 
   manager_user     = "kafka-user"
   manager_password = "Kafkatest@123"
+  maintain_begin   = "02:00"
+  maintain_end     = "06:00"
 
   charging_mode = "prePaid"
   period_unit   = "month"
@@ -437,28 +475,25 @@ resource "huaweicloud_dms_kafka_instance" "test" {
   vpc_id            = huaweicloud_vpc.test.id
   network_id        = huaweicloud_vpc_subnet.test.id
   security_group_id = huaweicloud_networking_secgroup.test.id
-
   flavor_id          = local.flavor.id
   storage_spec_code  = local.flavor.ios[0].storage_spec_code
-  availability_zones = [
-    data.huaweicloud_availability_zones.test.names[0],
-    data.huaweicloud_availability_zones.test.names[1],
-    data.huaweicloud_availability_zones.test.names[2]
-  ]
+  availability_zones = slice(data.huaweicloud_availability_zones.test.names, 0, 3)
 
   engine_version = "2.7"
   storage_space  = 300
   broker_num     = 3
   arch_type      = "X86"
-  public_ip_ids  = [
-    huaweicloud_vpc_eip.test[0].id,
-    huaweicloud_vpc_eip.test[1].id,
-    huaweicloud_vpc_eip.test[2].id
-  ]
+  public_ip_ids  = huaweicloud_vpc_eip.test[*].id
+  new_tenant_ips = ["192.168.0.20", "192.168.0.18"]
+
+  port_protocol {
+    private_plain_enable = true
+    public_plain_enable  = true
+  }
 }`, common.TestBaseNetwork(rName), testAccKafkaInstance_publicIpBase(3), rName)
 }
 
-func testAccKafkaInstance_publicIp_update(rName string, brokerNum int) string {
+func testAccKafkaInstance_publicIp_update(rName, password string, brokerNum int) string {
 	return fmt.Sprintf(`
 %s
 
@@ -483,22 +518,24 @@ resource "huaweicloud_dms_kafka_instance" "test" {
 
   flavor_id          = local.flavor.id
   storage_spec_code  = local.flavor.ios[0].storage_spec_code
-  availability_zones = [
-    data.huaweicloud_availability_zones.test.names[0],
-    data.huaweicloud_availability_zones.test.names[1],
-    data.huaweicloud_availability_zones.test.names[2]
-  ]
-  
+  availability_zones = slice(data.huaweicloud_availability_zones.test.names, 0, 3)
+
   engine_version = "2.7"
   storage_space  = 600
   broker_num     = %d
   arch_type      = "X86"
   new_tenant_ips = ["192.168.0.79"]
-  public_ip_ids  = [
-    huaweicloud_vpc_eip.test[0].id,
-    huaweicloud_vpc_eip.test[1].id,
-    huaweicloud_vpc_eip.test[2].id,
-    huaweicloud_vpc_eip.test[3].id
-  ]
-}`, common.TestBaseNetwork(rName), testAccKafkaInstance_publicIpBase(4), rName, brokerNum)
+  public_ip_ids  = huaweicloud_vpc_eip.test[*].id
+  access_user    = "test"
+  password       = "%[5]s"
+
+  enabled_mechanisms = ["SCRAM-SHA-512"]
+
+  port_protocol {
+    private_plain_enable    = false
+    private_sasl_ssl_enable = true
+    public_plain_enable     = false
+    public_sasl_ssl_enable  = true
+  }
+}`, common.TestBaseNetwork(rName), testAccKafkaInstance_publicIpBase(4), rName, brokerNum, password)
 }

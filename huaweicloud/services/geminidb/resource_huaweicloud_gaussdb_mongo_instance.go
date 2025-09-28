@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 )
 
 // @API GaussDBforNoSQL GET /v3/{project_id}/instances
@@ -47,6 +48,8 @@ func ResourceGaussDBMongoInstanceV3() *schema.Resource {
 			Update: schema.DefaultTimeout(120 * time.Minute),
 			Delete: schema.DefaultTimeout(30 * time.Minute),
 		},
+
+		CustomizeDiff: config.MergeDefaultTags(),
 
 		Schema: map[string]*schema.Schema{
 			"region": {
@@ -132,17 +135,11 @@ func ResourceGaussDBMongoInstanceV3() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"mongodb",
-							}, true),
 						},
 						"storage_engine": {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"rocksDB",
-							}, true),
 						},
 						"version": {
 							Type:     schema.TypeString,

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -45,6 +46,7 @@ type ctxType string
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/monitor-policy
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/internal-ip
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/port
+// @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/security-group
 // @API GaussDBforMySQL POST /v3/{project_id}/instances/{instance_id}/dns
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/dns
 // @API GaussDBforMySQL PUT /v3/{project_id}/instances/{instance_id}/ssl-option
@@ -91,16 +93,19 @@ func ResourceGaussDBInstance() *schema.Resource {
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 
-		CustomizeDiff: func(_ context.Context, d *schema.ResourceDiff, v interface{}) error {
-			if d.HasChange("proxy_node_num") {
-				mErr := multierror.Append(
-					d.SetNewComputed("proxy_address"),
-					d.SetNewComputed("proxy_port"),
-				)
-				return mErr.ErrorOrNil()
-			}
-			return nil
-		},
+		CustomizeDiff: customdiff.All(
+			func(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+				if d.HasChange("proxy_node_num") {
+					mErr := multierror.Append(
+						d.SetNewComputed("proxy_address"),
+						d.SetNewComputed("proxy_port"),
+					)
+					return mErr.ErrorOrNil()
+				}
+				return nil
+			},
+			config.MergeDefaultTags(),
+		),
 
 		Timeouts: &schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(60 * time.Minute),

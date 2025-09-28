@@ -31,6 +31,8 @@ func ResourceAppServerGroup() *schema.Resource {
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 
+		CustomizeDiff: config.MergeDefaultTags(),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -405,7 +407,7 @@ func GetServerGroupById(client *golangsdk.ServiceClient, serverGroupId string) (
 	}
 	requestResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving server group (%s): %s", serverGroupId, err)
+		return nil, err
 	}
 
 	respBody, err := utils.FlattenResponse(requestResp)

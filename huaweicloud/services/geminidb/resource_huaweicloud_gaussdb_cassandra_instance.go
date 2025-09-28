@@ -68,6 +68,8 @@ func ResourceGeminiDBInstanceV3() *schema.Resource {
 			Delete: schema.DefaultTimeout(30 * time.Minute),
 		},
 
+		CustomizeDiff: config.MergeDefaultTags(),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -149,9 +151,6 @@ func ResourceGeminiDBInstanceV3() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"cassandra", "GeminiDB-Cassandra",
-							}, true),
 							DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 								return new == "GeminiDB-Cassandra"
 							},
@@ -160,9 +159,6 @@ func ResourceGeminiDBInstanceV3() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"rocksDB",
-							}, true),
 						},
 						"version": {
 							Type:     schema.TypeString,
@@ -519,6 +515,7 @@ func resourceGeminiDBInstanceV3Read(_ context.Context, d *schema.ResourceData, m
 		d.Set("db_user_name", instance.DbUserName),
 		d.Set("lb_ip_address", instance.LbIpAddress),
 		d.Set("lb_port", instance.LbPort),
+		d.Set("tags", d.Get("tags")),
 	)
 
 	if instance.DedicatedResourceId != "" {

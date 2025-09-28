@@ -13,3 +13,8 @@ paths:
             tag: CodeArtsPipeline
         POST:
             tag: CodeArtsPipeline
+    /v1/serviceconnection/endpoints/{uuid}:
+        DELETE:
+            tag: CodeArtsPipeline
+        PUT:
+            tag: CodeArtsPipeline

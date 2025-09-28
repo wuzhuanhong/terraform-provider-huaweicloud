@@ -58,6 +58,8 @@ func ResourceGaussRedisInstanceV3() *schema.Resource {
 			Delete: schema.DefaultTimeout(30 * time.Minute),
 		},
 
+		CustomizeDiff: config.MergeDefaultTags(),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -162,25 +164,16 @@ func ResourceGaussRedisInstanceV3() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"redis",
-							}, true),
 						},
 						"storage_engine": {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"rocksDB",
-							}, true),
 						},
 						"version": {
 							Type:     schema.TypeString,
 							Required: true,
 							ForceNew: true,
-							ValidateFunc: validation.StringInSlice([]string{
-								"5.0",
-							}, true),
 						},
 					},
 				},

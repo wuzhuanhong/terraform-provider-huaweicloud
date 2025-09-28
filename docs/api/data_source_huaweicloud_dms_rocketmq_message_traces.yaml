@@ -6,8 +6,8 @@ schemes:
     - https
 host: huaweicloud.com
 tags:
-    - name: RorcketMQ
+    - name: RocketMQ
 paths:
     /v2/{engine}/{project_id}/instances/{instance_id}/trace:
         GET:
-            tag: RorcketMQ
+            tag: RocketMQ

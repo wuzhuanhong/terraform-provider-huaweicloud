@@ -52,6 +52,8 @@ func ResourceKmsKey() *schema.Resource {
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 
+		CustomizeDiff: config.MergeDefaultTags(),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -295,6 +297,7 @@ func ResourceKmsKeyRead(_ context.Context, d *schema.ResourceData, meta interfac
 		d.Set("key_state", key.KeyState),
 		d.Set("keystore_id", key.KeyStoreID),
 		utils.SetResourceTagsToState(d, keyClient, "kms", d.Id()),
+		d.Set("tags", d.Get("tags")),
 	)
 
 	if key.KeyState == EnabledState || key.KeyState == DisabledState {

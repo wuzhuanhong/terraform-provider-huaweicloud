@@ -35,6 +35,8 @@ func ResourceFlinkTemplate() *schema.Resource {
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 
+		CustomizeDiff: config.MergeDefaultTags(),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -185,6 +187,7 @@ func resourceFlinkTemplateRead(_ context.Context, d *schema.ResourceData, meta i
 		d.Set("sql", utils.PathSearch("sql_body", flinkTemplate, nil)),
 		d.Set("description", utils.PathSearch("desc", flinkTemplate, nil)),
 		d.Set("type", utils.PathSearch("job_type", flinkTemplate, nil)),
+		d.Set("tags", d.Get("tags")),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())

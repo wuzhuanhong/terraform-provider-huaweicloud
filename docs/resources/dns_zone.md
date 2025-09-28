@@ -90,11 +90,8 @@ Router configuration block which is required if zone_type is private.
 
   -> This is a one-time action.
 
-* `proxy_pattern` - (Optional, String, ForceNew) Specifies the recursive resolution proxy mode for subdomains of
-  the private zone.  
-  Defaults to **AUTHORITY**.  
-  Changing this parameter will create a new resource.  
-  The valid values are as follows:
+* `proxy_pattern` - (Optional, String) Specifies the recursive resolution proxy mode for subdomains of the private zone.
+  Defaults to **AUTHORITY**. The valid values are as follows:
   + **AUTHORITY**: The recursive resolution proxy is disabled for the private zone.
   + **RECURSIVE**: The recursive resolution proxy is enabled for the private zone.
   
@@ -103,6 +100,13 @@ Router configuration block which is required if zone_type is private.
      the DNS will recursively resolve the subdomains on the Internet and use the result from authoritative DNS servers.
 
 * `tags` - (Optional, Map) Specifies the key/value pairs to associate with the zone.
+
+* `dnssec` - (Optional, String) Specifies whether to enable DNSSEC for a public zone.
+  The valid values are as follows:
+  + **ENABLE**
+  + **DISABLE**
+
+  -> Before changing this parameter, make sure the zone status is enabled.
 
 <a name="zone_router"></a>
 The `router` block supports:
@@ -117,7 +121,35 @@ In addition to all arguments above, the following attributes are exported:
 
 * `id` -  The resource ID, also the zone ID.
 
+* `dnssec_infos` - Indicates the DNSSEC infos.
+  The [dnssec_infos](#attrblock--dnssec_infos) structure is documented below.
+
 * `masters` - The list of the masters of the DNS server.
+
+<a name="attrblock--dnssec_infos"></a>
+The `dnssec_infos` block supports:
+
+* `digest` - Indicates the digest.
+
+* `digest_algorithm` - Indicates the digest algorithm.
+
+* `digest_type` - Indicates the digest type.
+
+* `ds_record` - Indicates the DS record.
+
+* `flag` - Indicates the flag.
+
+* `key_tag` - Indicates the key tag.
+
+* `ksk_public_key` - Indicates the public key.
+
+* `signature` - Indicates the signature algorithm.
+
+* `signature_type` - Indicates the signature type.
+
+* `created_at` - Indicates the creation time. Format is **yyyy-MM-dd'T'HH:mm:ss.SSS**.
+
+* `updated_at` - Indicates the update time. Format is **yyyy-MM-dd'T'HH:mm:ss.SSS**.
 
 ## Timeouts
 

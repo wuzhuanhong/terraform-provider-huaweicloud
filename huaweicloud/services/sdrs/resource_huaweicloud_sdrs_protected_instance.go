@@ -38,6 +38,8 @@ func ResourceProtectedInstance() *schema.Resource {
 			Delete: schema.DefaultTimeout(10 * time.Minute),
 		},
 
+		CustomizeDiff: config.MergeDefaultTags(),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -165,6 +167,7 @@ func resourceProtectedInstanceRead(_ context.Context, d *schema.ResourceData, me
 		d.Set("server_id", n.SourceServer),
 		d.Set("description", n.Description),
 		d.Set("target_server", n.TargetServer),
+		d.Set("tags", d.Get("tags")),
 	)
 	if mErr.ErrorOrNil() != nil {
 		return diag.Errorf("error setting resource: %s", mErr)

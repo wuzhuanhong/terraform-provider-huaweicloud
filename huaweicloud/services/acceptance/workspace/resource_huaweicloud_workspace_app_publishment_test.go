@@ -13,7 +13,7 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/workspace"
 )
 
-func getApplicationFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+func getAppPublishedApplicationFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
 	client, err := cfg.NewServiceClient("appstream", acceptance.HW_REGION_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Workspace APP client: %s", err)
@@ -21,26 +21,25 @@ func getApplicationFunc(cfg *config.Config, state *terraform.ResourceState) (int
 	return workspace.GetApplicationByName(client, state.Primary.Attributes["app_group_id"], state.Primary.Attributes["name"])
 }
 
+// Before running this test, please create a workspace APP server group with COMMON_APP type.
 func TestAccAppPublishment_basic(t *testing.T) {
 	var (
 		application  interface{}
 		resourceName = "huaweicloud_workspace_app_publishment.test"
 		name         = acceptance.RandomAccResourceName()
 		updateName   = acceptance.RandomAccResourceName()
-		baseConfig   = testResourceWorkspaceAppGroup_basic_step1(
-			testResourceWorkspaceAppGroup_base(name, "COMMON_APP"),
-			name, "COMMON_APP")
+		baseConfig   = testDataSourceAppGroups_base(name, "COMMON_APP")
 	)
 	rc := acceptance.InitResourceCheck(
 		resourceName,
 		&application,
-		getApplicationFunc,
+		getAppPublishedApplicationFunc,
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckWorkspaceAppServerGroup(t)
+			acceptance.TestAccPreCheckWorkspaceAppServerGroupId(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),

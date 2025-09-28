@@ -39,6 +39,8 @@ func ResourceDatasourceConnection() *schema.Resource {
 			StateContext: schema.ImportStatePassthroughContext,
 		},
 
+		CustomizeDiff: config.MergeDefaultTags(),
+
 		Schema: map[string]*schema.Schema{
 			"region": {
 				Type:     schema.TypeString,
@@ -281,6 +283,7 @@ func resourceDatasourceConnectionRead(_ context.Context, d *schema.ResourceData,
 		d.Set("hosts", flattenGetDatasourceConnectionResponseBodyHost(getDatasourceConnectionRespBody)),
 		d.Set("routes", flattenGetDatasourceConnectionResponseBodyRoute(getDatasourceConnectionRespBody)),
 		d.Set("status", utils.PathSearch("status", getDatasourceConnectionRespBody, nil)),
+		d.Set("tags", d.Get("tags")),
 	)
 
 	return diag.FromErr(mErr.ErrorOrNil())

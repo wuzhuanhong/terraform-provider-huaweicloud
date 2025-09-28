@@ -8,34 +8,28 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk/openstack/sfs_turbo/v1/shares"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance/common"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/sfsturbo"
 )
 
 func getSfsTurboResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	client, err := cfg.SfsV1Client(acceptance.HW_REGION_NAME)
+	var (
+		region  = acceptance.HW_REGION_NAME
+		product = "sfs-turbo"
+	)
+
+	client, err := cfg.NewServiceClient(product, region)
 	if err != nil {
-		return nil, fmt.Errorf("error creating SFS client: %s", err)
+		return nil, fmt.Errorf("error creating SFS Turbo client: %s", err)
 	}
 
-	resourceID := state.Primary.ID
-	share, err := shares.Get(client, resourceID).Extract()
-	if err != nil {
-		return nil, err
-	}
-
-	if share.ID == resourceID {
-		return &share, nil
-	}
-
-	return nil, fmt.Errorf("the sfs turbo %s does not exist", resourceID)
+	return sfsturbo.GetTurboDetail(client, state.Primary.ID)
 }
 
 func TestAccSFSTurbo_basic(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -64,6 +58,7 @@ func TestAccSFSTurbo_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "status", "200"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
+					resource.TestCheckResourceAttr(resourceName, "auto_create_security_group_rules", "false"),
 					resource.TestCheckResourceAttrPair(resourceName, "security_group_id",
 						"huaweicloud_networking_secgroup.test", "id"),
 				),
@@ -72,6 +67,9 @@ func TestAccSFSTurbo_basic(t *testing.T) {
 				ResourceName:      resourceName,
 				ImportState:       true,
 				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"auto_create_security_group_rules",
+				},
 			},
 			{
 				Config: testAccSFSTurbo_update(rName),
@@ -81,6 +79,7 @@ func TestAccSFSTurbo_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "size", "600"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar_update"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value_update"),
+					resource.TestCheckResourceAttr(resourceName, "auto_create_security_group_rules", "true"),
 					resource.TestCheckResourceAttrPair(resourceName, "security_group_id",
 						"huaweicloud_networking_secgroup.test_update", "id"),
 					resource.TestCheckResourceAttr(resourceName, "status", "232"),
@@ -91,7 +90,7 @@ func TestAccSFSTurbo_basic(t *testing.T) {
 }
 
 func TestAccSFSTurbo_crypt(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -126,7 +125,7 @@ func TestAccSFSTurbo_crypt(t *testing.T) {
 }
 
 func TestAccSFSTurbo_withEpsId(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -156,7 +155,7 @@ func TestAccSFSTurbo_withEpsId(t *testing.T) {
 }
 
 func TestAccSFSTurbo_prePaid(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -195,7 +194,7 @@ func TestAccSFSTurbo_prePaid(t *testing.T) {
 }
 
 func TestAccSFSTurbo_hpcShareType(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -243,7 +242,7 @@ func TestAccSFSTurbo_hpcShareType(t *testing.T) {
 }
 
 func TestAccSFSTurbo_hpcCacheShareType(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -300,7 +299,7 @@ func TestAccSFSTurbo_hpcCacheShareType(t *testing.T) {
 }
 
 func TestAccSFSTurbo_backupId(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -341,7 +340,7 @@ func TestAccSFSTurbo_backupId(t *testing.T) {
 }
 
 func TestAccSFSTurbo_checkError(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -380,7 +379,7 @@ func TestAccSFSTurbo_checkError(t *testing.T) {
 }
 
 func TestAccSFSTurbo_checkUpdateError(t *testing.T) {
-	var turbo shares.Turbo
+	var turbo interface{}
 	rName := acceptance.RandomAccResourceName()
 	resourceName := "huaweicloud_sfs_turbo.test"
 
@@ -422,13 +421,14 @@ func testAccSFSTurbo_basic(rName string) string {
 data "huaweicloud_availability_zones" "test" {}
 
 resource "huaweicloud_sfs_turbo" "test" {
-  name              = "%s"
-  size              = 500
-  share_proto       = "NFS"
-  vpc_id            = huaweicloud_vpc.test.id
-  subnet_id         = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test.id
-  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  name                             = "%s"
+  size                             = 500
+  share_proto                      = "NFS"
+  vpc_id                           = huaweicloud_vpc.test.id
+  subnet_id                        = huaweicloud_vpc_subnet.test.id
+  security_group_id                = huaweicloud_networking_secgroup.test.id
+  auto_create_security_group_rules = "false"
+  availability_zone                = data.huaweicloud_availability_zones.test.names[0]
 
   tags = {
     foo = "bar"
@@ -450,13 +450,14 @@ resource "huaweicloud_networking_secgroup" "test_update" {
 data "huaweicloud_availability_zones" "test" {}
 
 resource "huaweicloud_sfs_turbo" "test" {
-  name              = "%[2]s_update"
-  size              = 600
-  share_proto       = "NFS"
-  vpc_id            = huaweicloud_vpc.test.id
-  subnet_id         = huaweicloud_vpc_subnet.test.id
-  security_group_id = huaweicloud_networking_secgroup.test_update.id
-  availability_zone = data.huaweicloud_availability_zones.test.names[0]
+  name                             = "%[2]s_update"
+  size                             = 600
+  share_proto                      = "NFS"
+  vpc_id                           = huaweicloud_vpc.test.id
+  subnet_id                        = huaweicloud_vpc_subnet.test.id
+  security_group_id                = huaweicloud_networking_secgroup.test_update.id
+  auto_create_security_group_rules = "true"
+  availability_zone                = data.huaweicloud_availability_zones.test.names[0]
 
   tags = {
     foo = "bar_update"

@@ -235,10 +235,9 @@ var allServiceCatalog = map[string]ServiceCatalog{
 		Product:          "UCS",
 	},
 	"asm": {
-		Name:             "asm",
-		Version:          "v1",
-		WithOutProjectID: true,
-		Product:          "ASM",
+		Name:    "asm",
+		Version: "v1",
+		Product: "ASM",
 	},
 
 	"aom": {
@@ -996,6 +995,13 @@ var allServiceCatalog = map[string]ServiceCatalog{
 		Scope:            "global",
 		WithOutProjectID: true,
 		Product:          "KooGallery",
+	},
+
+	// catalog for MetaStudio
+	"metastudio": {
+		Name:    "metastudio",
+		Version: "v1",
+		Product: "MetaStudio",
 	},
 }
 
