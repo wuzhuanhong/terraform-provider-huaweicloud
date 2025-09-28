@@ -322,6 +322,7 @@ var (
 	HW_SDRS_NIC_ID                 = os.Getenv("HW_SDRS_NIC_ID")
 	HW_SDRS_RESIZE_FLAVOR_ID       = os.Getenv("HW_SDRS_RESIZE_FLAVOR_ID")
 	HW_SDRS_FAILURE_JOB_ID         = os.Getenv("HW_SDRS_FAILURE_JOB_ID")
+	HW_SDRS_PROTECTION_GROUP_ID    = os.Getenv("HW_SDRS_PROTECTION_GROUP_ID")
 
 	HW_IDENTITY_CENTER_ACCOUNT_ID                = os.Getenv("HW_IDENTITY_CENTER_ACCOUNT_ID")
 	HW_IDENTITY_CENTER_IDENTITY_POLICY_ID        = os.Getenv("HW_IDENTITY_CENTER_IDENTITY_POLICY_ID")
@@ -433,11 +434,12 @@ var (
 	// The SecMaster alert ID
 	HW_SECMASTER_ALERT_ID = os.Getenv("HW_SECMASTER_ALERT_ID")
 
-	HW_MODELARTS_HAS_SUBSCRIBE_MODEL = os.Getenv("HW_MODELARTS_HAS_SUBSCRIBE_MODEL")
-	HW_MODELARTS_USER_LOGIN_PASSWORD = os.Getenv("HW_MODELARTS_USER_LOGIN_PASSWORD")
-	HW_MODELARTS_DEVSERVER_FLAVOR    = os.Getenv("HW_MODELARTS_DEVSERVER_FLAVOR")
-	HW_MODELARTS_DEVSERVER_IMAGE_ID  = os.Getenv("HW_MODELARTS_DEVSERVER_IMAGE_ID")
-	HW_MODELARTS_RESOURCE_POOL_NAME  = os.Getenv("HW_MODELARTS_RESOURCE_POOL_NAME")
+	HW_MODELARTS_HAS_SUBSCRIBE_MODEL                  = os.Getenv("HW_MODELARTS_HAS_SUBSCRIBE_MODEL")
+	HW_MODELARTS_USER_LOGIN_PASSWORD                  = os.Getenv("HW_MODELARTS_USER_LOGIN_PASSWORD")
+	HW_MODELARTS_DEVSERVER_FLAVOR                     = os.Getenv("HW_MODELARTS_DEVSERVER_FLAVOR")
+	HW_MODELARTS_DEVSERVER_IMAGE_ID                   = os.Getenv("HW_MODELARTS_DEVSERVER_IMAGE_ID")
+	HW_MODELARTS_RESOURCE_POOL_NAME                   = os.Getenv("HW_MODELARTS_RESOURCE_POOL_NAME")
+	HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME = os.Getenv("HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME")
 
 	// The CMDB sub-application ID of AOM service
 	HW_AOM_SUB_APPLICATION_ID                    = os.Getenv("HW_AOM_SUB_APPLICATION_ID")
@@ -577,10 +579,10 @@ var (
 	HW_DWS_OBS_AGENCY_NAMES = os.Getenv("HW_DWS_OBS_AGENCY_NAMES")
 
 	HW_DCS_ACCOUNT_WHITELIST = os.Getenv("HW_DCS_ACCOUNT_WHITELIST")
-
-	HW_DCS_INSTANCE_ID = os.Getenv("HW_DCS_INSTANCE_ID")
-	HW_DCS_BEGIN_TIME  = os.Getenv("HW_DCS_BEGIN_TIME")
-	HW_DCS_END_TIME    = os.Getenv("HW_DCS_END_TIME")
+	HW_DCS_INSTANCE_ID       = os.Getenv("HW_DCS_INSTANCE_ID")
+	HW_DCS_BEGIN_TIME        = os.Getenv("HW_DCS_BEGIN_TIME")
+	HW_DCS_END_TIME          = os.Getenv("HW_DCS_END_TIME")
+	HW_DCS_OBS_BUCKET_NAME   = os.Getenv("HW_DCS_OBS_BUCKET_NAME")
 
 	HW_ELB_GATEWAY_TYPE = os.Getenv("HW_ELB_GATEWAY_TYPE")
 
@@ -813,7 +815,7 @@ func TestAccPreCheckSDRSDeleteNic(t *testing.T) {
 }
 
 // lintignore:AT003
-func TestAccPreCheckSDRSInstanceResize(t *testing.T) {
+func TestAccPreCheckSDRSInstanceID(t *testing.T) {
 	if HW_SDRS_PROTECTION_INSTANCE_ID == "" {
 		t.Skip("HW_SDRS_PROTECTION_INSTANCE_ID must be set for this acceptance test")
 	}
@@ -823,6 +825,13 @@ func TestAccPreCheckSDRSInstanceResize(t *testing.T) {
 func TestAccPreCheckSDRSFailureJob(t *testing.T) {
 	if HW_SDRS_FAILURE_JOB_ID == "" {
 		t.Skip("HW_SDRS_FAILURE_JOB_ID must be set for this acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSDRSProtectionGroup(t *testing.T) {
+	if HW_SDRS_PROTECTION_GROUP_ID == "" {
+		t.Skip("HW_SDRS_PROTECTION_GROUP_ID must be set for this acceptance test")
 	}
 }
 
@@ -2438,6 +2447,13 @@ func TestAccPreCheckModelArtsResourcePoolName(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckModelArtsResourcePoolBatchResize(t *testing.T) {
+	if HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME == "" {
+		t.Skip("HW_MODELARTS_RESOURCE_POOL_BATCH_RESIZE_NODE_NAME must be set for ModelArts resource pool acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckEG(t *testing.T) {
 	if HW_EG_TEST_ON == "" {
 		t.Skip("Skip all sub tests of the EG service.")
@@ -3071,6 +3087,13 @@ func TestAccPreCheckDCSInstanceID(t *testing.T) {
 func TestAccPreCheckDcsTimeRange(t *testing.T) {
 	if HW_DCS_BEGIN_TIME == "" || HW_DCS_END_TIME == "" {
 		t.Skip("HW_DCS_BEGIN_TIME and HW_DCS_END_TIME must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckDcsObsBucketName(t *testing.T) {
+	if HW_DCS_OBS_BUCKET_NAME == "" {
+		t.Skip("HW_DCS_OBS_BUCKET_NAME must be set for the acceptance test")
 	}
 }
 
