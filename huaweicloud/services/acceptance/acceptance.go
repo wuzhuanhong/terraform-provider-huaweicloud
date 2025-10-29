@@ -128,22 +128,25 @@ var (
 	HW_WAF_DEDICATED_INSTANCE_ID                = os.Getenv("HW_WAF_DEDICATED_INSTANCE_ID")
 	HW_WAF_DEDICATED_INSTANCE_SECURITY_GROUP_ID = os.Getenv("HW_WAF_DEDICATED_INSTANCE_SECURITY_GROUP_ID")
 	HW_WAF_RULE_ID                              = os.Getenv("HW_WAF_RULE_ID")
+	HW_WAF_GEO_RULE_ID                          = os.Getenv("HW_WAF_GEO_RULE_ID")
 
 	HW_ELB_CERT_ID         = os.Getenv("HW_ELB_CERT_ID")
 	HW_ELB_LOADBALANCER_ID = os.Getenv("HW_ELB_LOADBALANCER_ID")
 
 	HW_DBSS_INSATNCE_ID = os.Getenv("HW_DBSS_INSATNCE_ID")
 
-	HW_DEW_ENABLE_FLAG      = os.Getenv("HW_DEW_ENABLE_FLAG")
-	HW_KPS_KEY_FILE_PATH    = os.Getenv("HW_KPS_KEY_FILE_PATH")
-	HW_KPS_KEYPAIR_NAME_1   = os.Getenv("HW_KPS_KEYPAIR_NAME_1")
-	HW_KPS_KEYPAIR_NAME_2   = os.Getenv("HW_KPS_KEYPAIR_NAME_2")
-	HW_KPS_KEYPAIR_KEY_1    = os.Getenv("HW_KPS_KEYPAIR_KEY_1")
-	HW_KPS_KEYPAIR_SSH_PORT = os.Getenv("HW_KPS_KEYPAIR_SSH_PORT")
-	HW_KPS_ENABLE_FLAG      = os.Getenv("HW_KPS_ENABLE_FLAG")
-	HW_KPS_FAILED_TASK_ID   = os.Getenv("HW_KPS_FAILED_TASK_ID")
-	HW_CSMS_TASK_ID         = os.Getenv("HW_CSMS_TASK_ID")
-	HW_CSMS_SECRET_ID       = os.Getenv("HW_CSMS_SECRET_ID")
+	HW_DEW_ENABLE_FLAG           = os.Getenv("HW_DEW_ENABLE_FLAG")
+	HW_KPS_KEY_FILE_PATH         = os.Getenv("HW_KPS_KEY_FILE_PATH")
+	HW_KPS_KEYPAIR_NAME_1        = os.Getenv("HW_KPS_KEYPAIR_NAME_1")
+	HW_KPS_KEYPAIR_NAME_2        = os.Getenv("HW_KPS_KEYPAIR_NAME_2")
+	HW_KPS_KEYPAIR_KEY_1         = os.Getenv("HW_KPS_KEYPAIR_KEY_1")
+	HW_KPS_KEYPAIR_SSH_PORT      = os.Getenv("HW_KPS_KEYPAIR_SSH_PORT")
+	HW_KPS_ENABLE_FLAG           = os.Getenv("HW_KPS_ENABLE_FLAG")
+	HW_KPS_PUBLIC_KEY_FILE_PATH  = os.Getenv("HW_KPS_PUBLIC_KEY_FILE_PATH")
+	HW_KPS_PRIVATE_KEY_FILE_PATH = os.Getenv("HW_KPS_PRIVATE_KEY_FILE_PATH")
+	HW_KPS_FAILED_TASK_ID        = os.Getenv("HW_KPS_FAILED_TASK_ID")
+	HW_CSMS_TASK_ID              = os.Getenv("HW_CSMS_TASK_ID")
+	HW_CSMS_SECRET_ID            = os.Getenv("HW_CSMS_SECRET_ID")
 
 	HW_DEST_REGION          = os.Getenv("HW_DEST_REGION")
 	HW_DEST_PROJECT_ID      = os.Getenv("HW_DEST_PROJECT_ID")
@@ -151,6 +154,7 @@ var (
 	HW_CHARGING_MODE        = os.Getenv("HW_CHARGING_MODE")
 	HW_HIGH_COST_ALLOW      = os.Getenv("HW_HIGH_COST_ALLOW")
 	HW_SWR_SHARING_ACCOUNT  = os.Getenv("HW_SWR_SHARING_ACCOUNT")
+	HW_SWR_USER             = os.Getenv("HW_SWR_USER")
 
 	HW_CBH_INSTANCE_ID = os.Getenv("HW_CBH_INSTANCE_ID")
 
@@ -172,15 +176,17 @@ var (
 
 	HW_CDN_DOMAIN_NAME = os.Getenv("HW_CDN_DOMAIN_NAME")
 	// `HW_CDN_CERT_DOMAIN_NAME` Configure the domain name environment variable of the certificate type.
-	HW_CDN_CERT_DOMAIN_NAME = os.Getenv("HW_CDN_CERT_DOMAIN_NAME")
-	HW_CDN_DOMAIN_URL       = os.Getenv("HW_CDN_DOMAIN_URL")
-	HW_CDN_CERT_PATH        = os.Getenv("HW_CDN_CERT_PATH")
-	HW_CDN_PRIVATE_KEY_PATH = os.Getenv("HW_CDN_PRIVATE_KEY_PATH")
-	HW_CDN_ENABLE_FLAG      = os.Getenv("HW_CDN_ENABLE_FLAG")
-	HW_CDN_TIMESTAMP        = os.Getenv("HW_CDN_TIMESTAMP")
-	HW_CDN_START_TIME       = os.Getenv("HW_CDN_START_TIME")
-	HW_CDN_END_TIME         = os.Getenv("HW_CDN_END_TIME")
-	HW_CDN_STAT_TYPE        = os.Getenv("HW_CDN_STAT_TYPE")
+	HW_CDN_CERT_DOMAIN_NAME   = os.Getenv("HW_CDN_CERT_DOMAIN_NAME")
+	HW_CDN_DOMAIN_URL         = os.Getenv("HW_CDN_DOMAIN_URL")
+	HW_CDN_TARGET_DOMAIN_URLS = os.Getenv("HW_CDN_TARGET_DOMAIN_URLS")
+	HW_CDN_CERT_PATH          = os.Getenv("HW_CDN_CERT_PATH")
+	HW_CDN_PRIVATE_KEY_PATH   = os.Getenv("HW_CDN_PRIVATE_KEY_PATH")
+	HW_CDN_ENABLE_FLAG        = os.Getenv("HW_CDN_ENABLE_FLAG")
+	HW_CDN_TIMESTAMP          = os.Getenv("HW_CDN_TIMESTAMP")
+	HW_CDN_START_TIME         = os.Getenv("HW_CDN_START_TIME")
+	HW_CDN_END_TIME           = os.Getenv("HW_CDN_END_TIME")
+	HW_CDN_STAT_TYPE          = os.Getenv("HW_CDN_STAT_TYPE")
+	HW_CDN_IP_ADDRESSES       = os.Getenv("HW_CDN_IP_ADDRESSES")
 
 	// CCM environment
 	HW_CCM_CERTIFICATE_CONTENT_PATH    = os.Getenv("HW_CCM_CERTIFICATE_CONTENT_PATH")
@@ -417,6 +423,11 @@ var (
 	HW_SWR_ORGANIZATION = os.Getenv("HW_SWR_ORGANIZATION")
 	// The repository of SWR image tag
 	HW_SWR_REPOSITORY = os.Getenv("HW_SWR_REPOSITORY")
+	// The signature task is sign with image exist
+	HW_SWR_SIGNATURE_WITH_IAMGE_ENABLED = os.Getenv("HW_SWR_SIGNATURE_WITH_IAMGE_ENABLED")
+
+	HW_SCM_CERTIFICATE_ID          = os.Getenv("HW_SCM_CERTIFICATE_ID")
+	HW_SCM_CERTIFICATE_DOMAIN_NAME = os.Getenv("HW_SCM_CERTIFICATE_DOMAIN_NAME")
 
 	// The ID of the CBR vault
 	HW_IMS_VAULT_ID = os.Getenv("HW_IMS_VAULT_ID")
@@ -603,10 +614,14 @@ var (
 	HW_EVS_VOLUME_NEW_SIZE          = os.Getenv("HW_EVS_VOLUME_NEW_SIZE")
 	HW_EVS_PREPAID_VOLUME_ID        = os.Getenv("HW_EVS_PREPAID_VOLUME_ID")
 	HW_EVS_PREPAID_VOLUME_NEW_SIZE  = os.Getenv("HW_EVS_PREPAID_VOLUME_NEW_SIZE")
+	HW_EVS_RECYCLE_BIN_ENABLE_FLAG  = os.Getenv("HW_EVS_RECYCLE_BIN_ENABLE_FLAG")
+	HW_EVS_RECYCLE_BIN_VOLUME_ID    = os.Getenv("HW_EVS_RECYCLE_BIN_VOLUME_ID")
 
 	HW_ECS_LAUNCH_TEMPLATE_ID = os.Getenv("HW_ECS_LAUNCH_TEMPLATE_ID")
+	HW_ECS_LAUNCH_GROUP_ID    = os.Getenv("HW_ECS_LAUNCH_GROUP_ID")
 	HW_ECS_ID                 = os.Getenv("HW_ECS_ID")
 	HW_ECS_ROOT_PWD           = os.Getenv("HW_ECS_ROOT_PWD")
+	HW_ECS_SCHEDULED_EVENT_ID = os.Getenv("HW_ECS_SCHEDULED_EVENT_ID")
 
 	HW_IOTDA_ACCESS_ADDRESS      = os.Getenv("HW_IOTDA_ACCESS_ADDRESS")
 	HW_IOTDA_BATCHTASK_FILE_PATH = os.Getenv("HW_IOTDA_BATCHTASK_FILE_PATH")
@@ -673,9 +688,12 @@ var (
 	HW_HSS_EVENT_ALARM_WHITE_LIST_HASH        = os.Getenv("HW_HSS_EVENT_ALARM_WHITE_LIST_HASH")
 	HW_HSS_EVENT_ALARM_WHITE_LIST_DESCRIPTION = os.Getenv("HW_HSS_EVENT_ALARM_WHITE_LIST_DESCRIPTION")
 	HW_HSS_ANTIVIRUS_ENABLED                  = os.Getenv("HW_HSS_ANTIVIRUS_ENABLED")
+	HW_HSS_CLUSTER_RISK_ID                    = os.Getenv("HW_HSS_CLUSTER_RISK_ID")
 	// The vulnerability ID
-	HW_HSS_VUL_ID    = os.Getenv("HW_HSS_VUL_ID")
-	HW_HSS_POLICY_ID = os.Getenv("HW_HSS_POLICY_ID")
+	HW_HSS_VUL_ID      = os.Getenv("HW_HSS_VUL_ID")
+	HW_HSS_POLICY_ID   = os.Getenv("HW_HSS_POLICY_ID")
+	HW_HSS_DOMAIN      = os.Getenv("HW_HSS_DOMAIN")
+	HW_HSS_IAC_FILE_ID = os.Getenv("HW_HSS_IAC_FILE_ID")
 
 	HW_DDM_INSTANCE_ID = os.Getenv("HW_DDM_INSTANCE_ID")
 	HW_DDM_PROCESS_ID  = os.Getenv("HW_DDM_PROCESS_ID")
@@ -1238,6 +1256,13 @@ func TestAccPreCheckWafRuleId(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckWafGeoRuleId(t *testing.T) {
+	if HW_WAF_GEO_RULE_ID == "" {
+		t.Skip("HW_WAF_GEO_RULE_ID must be set for this acceptance test.")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckElbCertID(t *testing.T) {
 	if HW_ELB_CERT_ID == "" {
 		t.Skip("HW_ELB_CERT_ID must be set for this acceptance test.")
@@ -1455,6 +1480,20 @@ func TestAccPreCheckEVSPrepaidVolumeNewSize(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckEVSRecycleBinEnableFlag(t *testing.T) {
+	if HW_EVS_RECYCLE_BIN_ENABLE_FLAG == "" {
+		t.Skip("HW_EVS_RECYCLE_BIN_ENABLE_FLAG must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckEVSRecycleBinVolumeId(t *testing.T) {
+	if HW_EVS_RECYCLE_BIN_VOLUME_ID == "" {
+		t.Skip("HW_EVS_RECYCLE_BIN_VOLUME_ID must be set for acceptance tests")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckAvailabilityZoneGPSSD2(t *testing.T) {
 	if HW_EVS_AVAILABILITY_ZONE_GPSSD2 == "" {
 		t.Skip("If you want to change the QoS of a GPSSD2 type cloudvolume, you must specify an availability zone that supports GPSSD2 type under the current region")
@@ -1503,6 +1542,13 @@ func TestAccPreCheckSWRDomian(t *testing.T) {
 	if HW_SWR_SHARING_ACCOUNT == "" {
 		t.Skip("HW_SWR_SHARING_ACCOUNT must be set for swr domian tests, " +
 			"the value of HW_SWR_SHARING_ACCOUNT should be another IAM user name")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSWRUser(t *testing.T) {
+	if HW_SWR_USER == "" {
+		t.Skip("HW_SWR_USER must be set for CCE autopilot addon tests")
 	}
 }
 
@@ -2040,6 +2086,13 @@ func TestAccPreCheckKpsEnable(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckKpsKeyFilePath(t *testing.T) {
+	if HW_KPS_PUBLIC_KEY_FILE_PATH == "" || HW_KPS_PRIVATE_KEY_FILE_PATH == "" {
+		t.Skip("HW_KPS_PUBLIC_KEY_FILE_PATH or HW_KPS_PRIVATE_KEY_FILE_PATH must be set for acceptance tests.")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckProjectID(t *testing.T) {
 	if HW_PROJECT_ID == "" {
 		t.Skip("HW_PROJECT_ID must be set for acceptance tests")
@@ -2391,6 +2444,27 @@ func TestAccPreCheckSwrOrigination(t *testing.T) {
 func TestAccPreCheckSwrRepository(t *testing.T) {
 	if HW_SWR_REPOSITORY == "" {
 		t.Skip("HW_SWR_REPOSITORY must be set for SWR image tags tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckSwrSignatureWithImageEnabled(t *testing.T) {
+	if HW_SWR_SIGNATURE_WITH_IAMGE_ENABLED == "" {
+		t.Skip("HW_SWR_SIGNATURE_WITH_IAMGE_ENABLED must be set for SWR image signature tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckScmCertificateId(t *testing.T) {
+	if HW_SCM_CERTIFICATE_ID == "" {
+		t.Skip("HW_SCM_CERTIFICATE_ID must be set for tests")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckScmCertificateDomainName(t *testing.T) {
+	if HW_SCM_CERTIFICATE_DOMAIN_NAME == "" {
+		t.Skip("HW_SCM_CERTIFICATE_DOMAIN_NAME must be set for tests")
 	}
 }
 
@@ -3011,6 +3085,13 @@ func TestAccPreCheckCDNURL(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckCDNTargetDomainUrls(t *testing.T, n int) {
+	if len(strings.Split(HW_CDN_TARGET_DOMAIN_URLS, ",")) < n {
+		t.Skipf("at lease %d domain URL(s) for HW_CDN_TARGET_DOMAIN_URLS must be set, separated by the comma (,) character", n)
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckCERT(t *testing.T) {
 	if HW_CDN_CERT_PATH == "" || HW_CDN_PRIVATE_KEY_PATH == "" {
 		t.Skip("This environment does not support CDN certificate tests")
@@ -3021,6 +3102,13 @@ func TestAccPreCheckCERT(t *testing.T) {
 func TestAccPreCheckCDNDomainCertificates(t *testing.T) {
 	if HW_CDN_ENABLE_FLAG == "" {
 		t.Skip("Skip the CDN acceptance tests.")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckCDNIPAddresses(t *testing.T, n int) {
+	if len(strings.Split(HW_CDN_IP_ADDRESSES, ",")) < n {
+		t.Skipf("at lease %d IP address(es) for HW_CDN_IP_ADDRESSES must be set, separated by a comma (,)", n)
 	}
 }
 
@@ -3247,6 +3335,13 @@ func TestAccPreCheckECSLaunchTemplateID(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckECSLaunchGroupID(t *testing.T) {
+	if HW_ECS_LAUNCH_GROUP_ID == "" {
+		t.Skip("HW_ECS_LAUNCH_GROUP_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckECSID(t *testing.T) {
 	if HW_ECS_ID == "" {
 		t.Skip("HW_ECS_ID must be set for the acceptance test")
@@ -3257,6 +3352,13 @@ func TestAccPreCheckECSID(t *testing.T) {
 func TestAccPreCheckECSAccount(t *testing.T) {
 	if HW_ECS_ID == "" || HW_ECS_ROOT_PWD == "" {
 		t.Skip("HW_ECS_ID, HW_ECS_ROOT_PWD must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckECSScheduledEventId(t *testing.T) {
+	if HW_ECS_SCHEDULED_EVENT_ID == "" {
+		t.Skip("HW_ECS_SCHEDULED_EVENT_ID must be set for the acceptance test")
 	}
 }
 
@@ -3449,6 +3551,13 @@ func TestAccPreCheckHSSAntivirusEnabled(t *testing.T) {
 }
 
 // lintignore:AT003
+func TestAccPreCheckHSSClusterRiskId(t *testing.T) {
+	if HW_HSS_CLUSTER_RISK_ID == "" {
+		t.Skip("HW_HSS_CLUSTER_RISK_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
 func TestAccPreCheckHSSCCEProtection(t *testing.T) {
 	if HW_CCE_CLUSTER_ID == "" || HW_CCE_CLUSTER_NAME == "" {
 		t.Skip("HW_CCE_CLUSTER_ID and HW_CCE_CLUSTER_NAME must be set for the acceptance test")
@@ -3466,6 +3575,20 @@ func TestAccPreCheckHSSVulnerabilityId(t *testing.T) {
 func TestAccPreCheckHSSPolicyId(t *testing.T) {
 	if HW_HSS_POLICY_ID == "" {
 		t.Skip("HW_HSS_POLICY_ID must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckHSSDomain(t *testing.T) {
+	if HW_HSS_DOMAIN == "" {
+		t.Skip("HW_HSS_DOMAIN must be set for the acceptance test")
+	}
+}
+
+// lintignore:AT003
+func TestAccPreCheckHSSIACFileId(t *testing.T) {
+	if HW_HSS_IAC_FILE_ID == "" {
+		t.Skip("HW_HSS_IAC_FILE_ID must be set for the acceptance test")
 	}
 }
 

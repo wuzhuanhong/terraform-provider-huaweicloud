@@ -1,7 +1,6 @@
 package ecs
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -27,7 +26,6 @@ import (
 
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/common"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/helper/hashcode"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
@@ -55,6 +53,8 @@ var (
 // @API ECS GET /v1/{project_id}/cloudservers/{server_id}/block_device/{volume_id}
 // @API ECS GET /v1/{project_id}/jobs/{job_id}
 // @API ECS POST /v1/{project_id}/cloudservers/{server_id}/changevpc
+// @API ECS POST /v1/{project_id}/cloudservers/{server_id}/migrate
+// @API ECS POST /v1/{project_id}/cloudservers/actions/change-charge-mode
 // @API IMS GET /v2/cloudimages
 // @API EVS POST /v2.1/{project_id}/cloudvolumes/{volume_id}/action
 // @API EVS GET /v2/{project_id}/cloudvolumes/{volume_id}
@@ -294,9 +294,8 @@ func ResourceComputeInstance() *schema.Resource {
 				},
 			},
 			"scheduler_hints": {
-				Type:     schema.TypeSet,
+				Type:     schema.TypeList,
 				Optional: true,
-				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"group": {
@@ -314,16 +313,14 @@ func ResourceComputeInstance() *schema.Resource {
 						"tenancy": {
 							Type:     schema.TypeString,
 							Optional: true,
-							ForceNew: true,
+							Computed: true,
 						},
 						"deh_id": {
 							Type:     schema.TypeString,
 							Optional: true,
-							ForceNew: true,
 						},
 					},
 				},
-				Set: resourceComputeSchedulerHintsHash,
 			},
 			"user_data": {
 				Type:     schema.TypeString,
@@ -356,6 +353,14 @@ func ResourceComputeInstance() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
+			},
+			"include_data_disks_on_update": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"include_publicips_on_update": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 
 			"eip_id": {
@@ -420,16 +425,26 @@ func ResourceComputeInstance() *schema.Resource {
 			"charging_mode": {
 				Type:     schema.TypeString,
 				Optional: true,
-				ForceNew: true,
 				Computed: true,
 				ValidateFunc: validation.StringInSlice([]string{
 					"prePaid", "postPaid", "spot",
 				}, false),
 			},
-			"period_unit": common.SchemaPeriodUnit(nil),
-			"period":      common.SchemaPeriod(nil),
-			"auto_renew":  common.SchemaAutoRenewUpdatable(nil),
-			"auto_pay":    common.SchemaAutoPay(nil),
+			"period_unit": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				RequiredWith: []string{"period"},
+				ValidateFunc: validation.StringInSlice([]string{
+					"month", "year",
+				}, false),
+			},
+			"period": {
+				Type:         schema.TypeInt,
+				Optional:     true,
+				RequiredWith: []string{"period_unit"},
+			},
+			"auto_renew": common.SchemaAutoRenewUpdatable(nil),
+			"auto_pay":   common.SchemaAutoPay(nil),
 
 			"spot_maximum_price": {
 				Type:          schema.TypeString,
@@ -478,6 +493,22 @@ func ResourceComputeInstance() *schema.Resource {
 			"auto_terminate_time": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"enclave_options": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"enabled": {
+							Type:     schema.TypeBool,
+							Required: true,
+							ForceNew: true,
+						},
+					},
+				},
 			},
 			// computed attributes
 			"volume_attached": {
@@ -627,6 +658,7 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		PublicIp:          buildInstancePublicIPRequest(d),
 		UserData:          []byte(d.Get("user_data").(string)),
 		AutoTerminateTime: d.Get("auto_terminate_time").(string),
+		EnclaveOptions:    buildInstanceEnclaveOptionsPRequest(d),
 	}
 
 	if tags, ok := d.GetOk("tags"); ok {
@@ -676,7 +708,7 @@ func resourceComputeInstanceCreate(ctx context.Context, d *schema.ResourceData, 
 		createOpts.MetaData = &metadata
 	}
 
-	schedulerHintsRaw := d.Get("scheduler_hints").(*schema.Set).List()
+	schedulerHintsRaw := d.Get("scheduler_hints").([]interface{})
 	if len(schedulerHintsRaw) > 0 {
 		if m, ok := schedulerHintsRaw[0].(map[string]interface{}); ok {
 			schedulerHints := buildInstanceSchedulerHints(m)
@@ -836,6 +868,7 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 	d.Set("updated_at", server.Updated.Format(time.RFC3339))
 	d.Set("auto_terminate_time", server.AutoTerminateTime)
 	d.Set("public_ip", computePublicIP(server))
+	d.Set("enclave_options", flattenEnclaveOptions(server.EnclaveOptions))
 
 	flavorInfo := server.Flavor
 	d.Set("flavor_id", flavorInfo.ID)
@@ -941,14 +974,18 @@ func resourceComputeInstanceRead(_ context.Context, d *schema.ResourceData, meta
 
 	// set scheduler_hints
 	osHints := server.OsSchedulerHints
-	if len(osHints.Group) > 0 {
-		schedulerHints := make([]map[string]interface{}, len(osHints.Group))
-		for i, v := range osHints.Group {
-			schedulerHints[i] = map[string]interface{}{
-				"group": v,
-			}
+	if len(osHints.Group) > 0 || len(osHints.Tenancy) > 0 || len(osHints.DedicatedHostID) > 0 {
+		schedulerHint := make(map[string]interface{})
+		if len(osHints.Group) > 0 {
+			schedulerHint["group"] = osHints.Group[0]
 		}
-		d.Set("scheduler_hints", schedulerHints)
+		if len(osHints.Tenancy) > 0 {
+			schedulerHint["tenancy"] = osHints.Tenancy[0]
+		}
+		if len(osHints.DedicatedHostID) > 0 {
+			schedulerHint["deh_id"] = osHints.DedicatedHostID[0]
+		}
+		d.Set("scheduler_hints", []map[string]interface{}{schedulerHint})
 	}
 
 	// Set instance tags
@@ -1011,6 +1048,20 @@ func normalizeChargingMode(mode string) string {
 	return ret
 }
 
+func flattenEnclaveOptions(enclaveOptions *cloudservers.EnclaveOptions) []map[string]interface{} {
+	if enclaveOptions == nil {
+		return nil
+	}
+
+	res := []map[string]interface{}{
+		{
+			"enabled": enclaveOptions.Enabled,
+		},
+	}
+
+	return res
+}
+
 func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	cfg := meta.(*config.Config)
 	region := cfg.GetRegion(d)
@@ -1026,8 +1077,26 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 	if err != nil {
 		return diag.Errorf("error creating compute V1.1 client: %s", err)
 	}
+	bssClient, err := cfg.BssV2Client(region)
+	if err != nil {
+		return diag.Errorf("error creating BSS v2 client: %s", err)
+	}
 
 	serverID := d.Id()
+	if d.HasChange("charging_mode") {
+		if d.Get("charging_mode").(string) != "prePaid" {
+			return diag.Errorf("error updating the charging mode of the ECS instance (%s): %s", d.Id(),
+				"only support change to pre-paid")
+		}
+		if err = updateInstanceChargingMode(ctx, d, ecsClient, bssClient); err != nil {
+			return diag.FromErr(err)
+		}
+	} else if d.HasChange("auto_renew") {
+		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), serverID); err != nil {
+			return diag.Errorf("error updating the auto-renew of the instance (%s): %s", serverID, err)
+		}
+	}
+
 	if d.HasChanges("name", "description", "user_data") {
 		var updateOpts cloudservers.UpdateOpts
 		updateOpts.Name = d.Get("name").(string)
@@ -1191,10 +1260,6 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 
 		if strings.EqualFold(d.Get("charging_mode").(string), "prePaid") {
-			bssClient, err := cfg.BssV2Client(region)
-			if err != nil {
-				return diag.Errorf("error creating BSS v2 client: %s", err)
-			}
 			err = common.WaitOrderComplete(ctx, bssClient, resp.OrderID, d.Timeout(schema.TimeoutUpdate))
 			if err != nil {
 				return diag.Errorf("The order (%s) is not completed while extending system disk (%s) size: %v",
@@ -1247,16 +1312,6 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		}
 	}
 
-	if d.HasChange("auto_renew") {
-		bssClient, err := cfg.BssV2Client(region)
-		if err != nil {
-			return diag.Errorf("error creating BSS V2 client: %s", err)
-		}
-		if err = common.UpdateAutoRenew(bssClient, d.Get("auto_renew").(string), serverID); err != nil {
-			return diag.Errorf("error updating the auto-renew of the instance (%s): %s", serverID, err)
-		}
-	}
-
 	if d.HasChange("auto_terminate_time") {
 		terminateTime := d.Get("auto_terminate_time").(string)
 		err := cloudservers.UpdateAutoTerminateTime(ecsClient, serverID, terminateTime).ExtractErr()
@@ -1273,6 +1328,13 @@ func resourceComputeInstanceUpdate(ctx context.Context, d *schema.ResourceData, 
 		err = updateInstanceNetwork(ctx, d, ecsClient, vpcClient, serverID)
 		if err != nil {
 			return diag.Errorf("error updating network of server (%s): %s", serverID, err)
+		}
+	}
+
+	if d.HasChanges("scheduler_hints.0.deh_id") {
+		err = updateInstanceDehId(ctx, d, ecsClient)
+		if err != nil {
+			return diag.FromErr(err)
 		}
 	}
 
@@ -1412,6 +1474,114 @@ func buildUpdateInstanceNetworkSecgroupOpts(d *schema.ResourceData) []map[string
 	}
 
 	return bodyParams
+}
+
+func updateInstanceChargingMode(ctx context.Context, d *schema.ResourceData, client, bssClient *golangsdk.ServiceClient) error {
+	httpUrl := "v1/{project_id}/cloudservers/actions/change-charge-mode"
+	updatePath := client.Endpoint + httpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		JSONBody:         buildUpdateInstanceChargingMode(d),
+	}
+	updateResp, err := client.Request("POST", updatePath, &updateOpt)
+	if err != nil {
+		return fmt.Errorf("error udpating ECS charging mode: %s", err)
+	}
+
+	updateRespBody, err := utils.FlattenResponse(updateResp)
+	if err != nil {
+		return err
+	}
+	orderId := utils.PathSearch("order_id", updateRespBody, "").(string)
+	if orderId == "" {
+		return errors.New("order_id is not found in the API response")
+	}
+
+	err = common.WaitOrderComplete(ctx, bssClient, orderId, d.Timeout(schema.TimeoutUpdate))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func buildUpdateInstanceChargingMode(d *schema.ResourceData) map[string]interface{} {
+	bodyParam := map[string]interface{}{
+		"server_ids":  []string{d.Id()},
+		"charge_mode": "prePaid",
+		"prepaid_options": map[string]interface{}{
+			"include_data_disks": d.Get("include_data_disks_on_update"),
+			"include_publicips":  d.Get("include_publicips_on_update"),
+			"period_type":        d.Get("period_unit"),
+			"period_num":         d.Get("period"),
+			"auto_pay":           true,
+			"auto_renew":         d.Get("auto_renew"),
+		},
+	}
+
+	return bodyParam
+}
+
+func updateInstanceDehId(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient) error {
+	httpUrl := "v1/{project_id}/cloudservers/{server_id}/migrate"
+	updatePath := client.Endpoint + httpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{server_id}", d.Id())
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		JSONBody:         buildUpdateInstanceDehIdOpts(d),
+	}
+	updateResp, err := client.Request("POST", updatePath, &updateOpt)
+	if err != nil {
+		return fmt.Errorf("error udpating ECS dedicated host ID: %s", err)
+	}
+
+	updateRespBody, err := utils.FlattenResponse(updateResp)
+	if err != nil {
+		return err
+	}
+	jobID := utils.PathSearch("job_id", updateRespBody, "").(string)
+	if jobID == "" {
+		return errors.New("unable to find the job ID from the API response")
+	}
+
+	// Wait for job status become `SUCCESS`.
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"SUCCESS"},
+		Refresh:      getJobRefreshFunc(client, jobID),
+		Timeout:      d.Timeout(schema.TimeoutUpdate),
+		Delay:        10 * time.Second,
+		PollInterval: 10 * time.Second,
+	}
+	_, err = stateConf.WaitForStateContext(ctx)
+	if err != nil {
+		return fmt.Errorf("error waiting for ECS dedicated host ID updated: %s", err)
+	}
+
+	return nil
+}
+
+func buildUpdateInstanceDehIdOpts(d *schema.ResourceData) map[string]interface{} {
+	bodyParam := map[string]interface{}{
+		"migrate": nil,
+	}
+	schedulerHintsRaw := d.Get("scheduler_hints").([]interface{})
+	if len(schedulerHintsRaw) > 0 {
+		if m, ok := schedulerHintsRaw[0].(map[string]interface{}); ok {
+			dedicatedHostId := m["deh_id"]
+			if dedicatedHostId != nil && len(dedicatedHostId.(string)) > 0 {
+				bodyParam["migrate"] = map[string]interface{}{
+					"dedicated_host_id": dedicatedHostId,
+				}
+			}
+		}
+	}
+
+	return bodyParam
 }
 
 func resourceComputeInstanceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1655,6 +1825,21 @@ func buildInstanceSchedulerHints(schedulerHintsRaw map[string]interface{}) cloud
 	return schedulerHints
 }
 
+func buildInstanceEnclaveOptionsPRequest(d *schema.ResourceData) *cloudservers.EnclaveOptions {
+	v, ok := d.GetOk("enclave_options")
+	if !ok {
+		return nil
+	}
+
+	enclaveOptionsRaw := v.([]interface{})[0]
+
+	res := cloudservers.EnclaveOptions{
+		Enabled: utils.PathSearch("enabled", enclaveOptionsRaw, false).(bool),
+	}
+
+	return &res
+}
+
 func getImage(client *golangsdk.ServiceClient, id, name string) (*cloudimages.Image, error) {
 	listOpts := &cloudimages.ListOpts{
 		ID:                  id,
@@ -1770,28 +1955,6 @@ func getVpcID(d *schema.ResourceData, client *golangsdk.ServiceClient) (string, 
 	}
 
 	return subnet.VPC_ID, nil
-}
-
-func resourceComputeSchedulerHintsHash(v interface{}) int {
-	var buf bytes.Buffer
-	m, ok := v.(map[string]interface{})
-	if !ok {
-		return 0
-	}
-
-	if m["group"] != nil {
-		buf.WriteString(fmt.Sprintf("%s-", m["group"].(string)))
-	}
-
-	if m["tenancy"] != nil {
-		buf.WriteString(fmt.Sprintf("%s-", m["tenancy"].(string)))
-	}
-
-	if m["deh_id"] != nil {
-		buf.WriteString(fmt.Sprintf("%s-", m["deh_id"].(string)))
-	}
-
-	return hashcode.String(buf.String())
 }
 
 func waitForServerTargetState(ctx context.Context, client *golangsdk.ServiceClient, instanceID string, pending, target []string,

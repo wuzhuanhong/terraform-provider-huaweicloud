@@ -28,10 +28,6 @@ func ResourceSwrEnterpriseImageSignaturePolicyExecute() *schema.Resource {
 		ReadContext:   resourceSwrEnterpriseImageSignaturePolicyExecuteRead,
 		DeleteContext: resourceSwrEnterpriseImageSignaturePolicyExecuteDelete,
 
-		Importer: &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
-		},
-
 		CustomizeDiff: config.FlexibleForceNew(enterpriseImageSignaturePolicyExecuteNonUpdatableParams),
 
 		Schema: map[string]*schema.Schema{
@@ -105,7 +101,7 @@ func resourceSwrEnterpriseImageSignaturePolicyExecuteCreate(_ context.Context, d
 
 	id := int(utils.PathSearch("id", createRespBody, float64(-1)).(float64))
 	if id == -1 {
-		return diag.Errorf("unable to find SWR instance policy ID from the API response")
+		return diag.Errorf("unable to find SWR instance execution ID from the API response")
 	}
 
 	d.SetId(instanceId + "/" + namespaceName + "/" + strconv.Itoa(id))
@@ -127,7 +123,7 @@ func resourceSwrEnterpriseImageSignaturePolicyExecuteUpdate(_ context.Context, _
 }
 
 func resourceSwrEnterpriseImageSignaturePolicyExecuteDelete(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
-	errorMsg := "Deleting SWR enterprise image signature policy resource is not supported. The resource is only removed from the state."
+	errorMsg := "Deleting SWR enterprise image signature policy execute resource is not supported. The resource is only removed from the state."
 	return diag.Diagnostics{
 		diag.Diagnostic{
 			Severity: diag.Warning,

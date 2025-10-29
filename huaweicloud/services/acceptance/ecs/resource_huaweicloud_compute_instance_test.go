@@ -49,7 +49,7 @@ func TestAccComputeInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "metadata.key", "value"),
 					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
 					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
-					resource.TestCheckResourceAttr(resourceName, "auto_terminate_time", "2025-10-10T11:11:00Z"),
+					resource.TestCheckResourceAttr(resourceName, "auto_terminate_time", "2026-10-10T11:11:00Z"),
 				),
 			},
 			{
@@ -360,6 +360,76 @@ func TestAccComputeInstance_changeNetwork(t *testing.T) {
 	})
 }
 
+func TestAccComputeInstance_with_deh(t *testing.T) {
+	var instance cloudservers.CloudServer
+
+	rName := acceptance.RandomAccResourceName()
+	resourceName := "huaweicloud_compute_instance.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckAsDedicatedHostId(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      testAccCheckComputeInstanceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccComputeInstance_with_deh(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckComputeInstanceExists(resourceName, &instance),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "scheduler_hints.0.tenancy", "dedicated"),
+					resource.TestCheckResourceAttr(resourceName, "scheduler_hints.0.deh_id", acceptance.HW_DEDICATED_HOST_ID),
+				),
+			},
+			{
+				Config: testAccComputeInstance_with_deh_update(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckComputeInstanceExists(resourceName, &instance),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+				),
+			},
+		},
+	})
+}
+
+func TestAccComputeInstance_change_charging_mode_to_prepaid(t *testing.T) {
+	var instance cloudservers.CloudServer
+
+	rName := acceptance.RandomAccResourceName()
+	resourceName := "huaweicloud_compute_instance.test"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckChargingMode(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      testAccCheckComputeInstanceDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccComputeInstance_change_charging_mode_to_prepaid(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckComputeInstanceExists(resourceName, &instance),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "system_disk_type", "SSD"),
+					resource.TestCheckResourceAttr(resourceName, "system_disk_size", "40"),
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "postPaid"),
+				),
+			},
+			{
+				Config: testAccComputeInstance_change_charging_mode_to_prepaid_Update(rName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckComputeInstanceExists(resourceName, &instance),
+					resource.TestCheckResourceAttr(resourceName, "system_disk_type", "SSD"),
+					resource.TestCheckResourceAttr(resourceName, "system_disk_size", "40"),
+					resource.TestCheckResourceAttr(resourceName, "charging_mode", "prePaid"),
+				),
+			},
+		},
+	})
+}
 func testAccCheckComputeInstanceDestroy(s *terraform.State) error {
 	cfg := acceptance.TestAccProvider.Meta().(*config.Config)
 	computeClient, err := cfg.ComputeV1Client(acceptance.HW_REGION_NAME)
@@ -452,7 +522,7 @@ resource "huaweicloud_compute_instance" "test" {
   stop_before_destroy = true
   agency_name         = "test111"
   agent_list          = "hss"
-  auto_terminate_time = "2025-10-10T11:11:00Z"
+  auto_terminate_time = "2026-10-10T11:11:00Z"
 
   user_data = <<EOF
 #! /bin/bash
@@ -804,6 +874,117 @@ resource "huaweicloud_compute_instance" "test" {
     type = "SAS"
     size = "10"
   }
+}
+`, testAccCompute_data, rName)
+}
+
+func testAccComputeInstance_with_deh(rName string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_compute_instance" "test" {
+  name               = "%[2]s"
+  image_id           = data.huaweicloud_images_image.test.id
+  flavor_id          = data.huaweicloud_compute_flavors.test.ids[0]
+  security_group_ids = [data.huaweicloud_networking_secgroup.test.id]
+  availability_zone  = data.huaweicloud_availability_zones.test.names[0]
+
+  network {
+    uuid = data.huaweicloud_vpc_subnet.test.id
+  }
+
+  scheduler_hints {
+    tenancy = "dedicated"
+    deh_id  = "%[3]s"
+  }
+}
+`, testAccCompute_data, rName, acceptance.HW_DEDICATED_HOST_ID)
+}
+
+func testAccComputeInstance_with_deh_update(rName string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_compute_instance" "test" {
+  name               = "%[2]s"
+  image_id           = data.huaweicloud_images_image.test.id
+  flavor_id          = data.huaweicloud_compute_flavors.test.ids[0]
+  security_group_ids = [data.huaweicloud_networking_secgroup.test.id]
+  availability_zone  = data.huaweicloud_availability_zones.test.names[0]
+  power_action       = "OFF"
+
+  network {
+    uuid = data.huaweicloud_vpc_subnet.test.id
+  }
+}
+`, testAccCompute_data, rName)
+}
+
+func testAccComputeInstance_change_charging_mode_to_prepaid(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_compute_instance" "test" {
+  name               = "%s"
+  image_id           = data.huaweicloud_images_image.test.id
+  flavor_id          = data.huaweicloud_compute_flavors.test.ids[0]
+  security_group_ids = [data.huaweicloud_networking_secgroup.test.id]
+  availability_zone  = data.huaweicloud_availability_zones.test.names[0]
+  system_disk_type   = "SSD"
+  system_disk_size   = 40
+
+  network {
+    uuid = data.huaweicloud_vpc_subnet.test.id
+  }
+
+  data_disks {
+    type       = "GPSSD2"
+    size       = "50"
+    iops       = 4000
+    throughput = 200
+  }
+
+  eip_type = "5_bgp"
+  bandwidth {
+    share_type  = "PER"
+    size        = 5
+    charge_mode = "bandwidth"
+  }
+}
+`, testAccCompute_data, rName)
+}
+
+func testAccComputeInstance_change_charging_mode_to_prepaid_Update(rName string) string {
+	return fmt.Sprintf(`
+%s
+
+resource "huaweicloud_compute_instance" "test" {
+  name               = "%s"
+  image_id           = data.huaweicloud_images_image.test.id
+  flavor_id          = data.huaweicloud_compute_flavors.test.ids[0]
+  security_group_ids = [data.huaweicloud_networking_secgroup.test.id]
+  availability_zone  = data.huaweicloud_availability_zones.test.names[0]
+  system_disk_type   = "SSD"
+  system_disk_size   = 40
+
+  network {
+    uuid = data.huaweicloud_vpc_subnet.test.id
+  }
+
+  eip_type = "5_bgp"
+  bandwidth {
+    share_type  = "PER"
+    size        = 5
+    charge_mode = "bandwidth"
+  }
+
+  include_data_disks_on_update = true
+  include_publicips_on_update  = true
+
+  charging_mode = "prePaid"
+  period_unit   = "month"
+  period        = 1
+  auto_renew    = "false"
 }
 `, testAccCompute_data, rName)
 }

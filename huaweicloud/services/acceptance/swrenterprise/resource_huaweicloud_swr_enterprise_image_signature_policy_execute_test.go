@@ -32,7 +32,7 @@ func testAccSwrEnterpriseImageSignaturePolicyExecute_basic(rName string) string 
 resource "huaweicloud_swr_enterprise_image_signature_policy_execute" "test" {
   instance_id    = huaweicloud_swr_enterprise_instance.test.id
   namespace_name = "library"
-  policy_id      = huaweicloud_swr_enterprise_image_signature_policy.test.id
+  policy_id      = huaweicloud_swr_enterprise_image_signature_policy.test.policy_id
 }
 `, testAccSwrEnterpriseImageSignaturePolicy_basic(rName))
 }
