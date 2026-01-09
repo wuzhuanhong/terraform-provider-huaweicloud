@@ -11,6 +11,9 @@ paths:
     /v2/{project_id}/notifications/subscriptions/{subscriptionUrn}:
         DELETE:
             tag: SMN
+    /v2/{project_id}/notifications/topics/{topic_urn}/subscriptions/{subscription_urn}:
+        PUT:
+            tag: SMN
     /v2/{project_id}/notifications/topics/{topicUrn}/subscriptions:
         GET:
             tag: SMN

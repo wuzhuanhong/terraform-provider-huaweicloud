@@ -9,7 +9,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/chnsz/golangsdk"
@@ -21,7 +20,7 @@ import (
 
 // @API RocketMQ POST /v2/{project_id}/instances/{instance_id}/metadata
 // @API RocketMQ GET /v2/{project_id}/instances/{instance_id}/metadata
-// @API RocketMQ DELETE /v2/{project_id}/instances/{instance_id}/metadata
+// @API RocketMQ POST /v2/{project_id}/instances/{instance_id}/metadata/batch-delete
 func ResourceDmsRocketmqMigrationTask() *schema.Resource {
 	return &schema.Resource{
 		CreateContext: resourceRocketmqMigrationTaskCreate,
@@ -394,14 +393,7 @@ func resourceRocketmqMigrationTaskCreate(ctx context.Context, d *schema.Resource
 
 	createRocketmqMigrationTaskOpt.JSONBody = utils.RemoveNil(buildCreateMigrationTaskBodyParams(d))
 
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"CREATING", "EXTENDING"},
-		Target:       []string{"RUNNING"},
-		Refresh:      rocketmqInstanceStateRefreshFunc(createRocketmqMigrationTaskClient, instanceID),
-		Timeout:      d.Timeout(schema.TimeoutCreate),
-		PollInterval: 10 * time.Second,
-	}
-	_, err = stateConf.WaitForStateContext(ctx)
+	err = waitForInstanceStatusCompleted(ctx, createRocketmqMigrationTaskClient, instanceID, []string{"RUNNING"}, d.Timeout(schema.TimeoutCreate))
 	if err != nil {
 		return diag.Errorf("error waiting for the status of the RocketMQ instance (%s) to be RUNNING: %s", instanceID, err)
 	}
@@ -587,44 +579,40 @@ func getGroupConfigs(jsonData interface{}) []interface{} {
 }
 
 func resourceRocketmqMigrationTaskDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	cfg := meta.(*config.Config)
-	region := cfg.GetRegion(d)
-
-	// deleteRocketmqMigrationTask: delete RocketMQ migration task
 	var (
-		deleteRocketmqMigrationTaskHttpUrl = "v2/{project_id}/instances/{instance_id}/metadata"
-		deleteRocketmqMigrationTaskProduct = "dms"
+		cfg        = meta.(*config.Config)
+		httpUrl    = "v2/{project_id}/instances/{instance_id}/metadata/batch-delete"
+		instanceId = d.Get("instance_id").(string)
+		taskId     = d.Id()
 	)
-	deleteRocketmqMigrationTaskClient, err := cfg.NewServiceClient(deleteRocketmqMigrationTaskProduct, region)
+	client, err := cfg.NewServiceClient("dms", cfg.GetRegion(d))
 	if err != nil {
 		return diag.Errorf("error creating DMS client: %s", err)
 	}
-	instanceID := d.Get("instance_id").(string)
-	deleteRocketmqMigrationTaskPath := deleteRocketmqMigrationTaskClient.Endpoint + deleteRocketmqMigrationTaskHttpUrl
-	deleteRocketmqMigrationTaskPath = strings.ReplaceAll(deleteRocketmqMigrationTaskPath, "{project_id}", deleteRocketmqMigrationTaskClient.ProjectID)
-	deleteRocketmqMigrationTaskPath = strings.ReplaceAll(deleteRocketmqMigrationTaskPath, "{instance_id}", instanceID)
 
-	deleteRocketmqMigrationTaskOpt := golangsdk.RequestOpts{KeepResponseBody: true}
-	deleteRocketmqMigrationTaskOpt.JSONBody = map[string]interface{}{"task_ids": []string{d.Id()}}
+	deletePath := client.Endpoint + httpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{project_id}", client.ProjectID)
+	deletePath = strings.ReplaceAll(deletePath, "{instance_id}", instanceId)
 
-	stateConf := &resource.StateChangeConf{
-		Pending:      []string{"CREATING", "EXTENDING"},
-		Target:       []string{"RUNNING"},
-		Refresh:      rocketmqInstanceStateRefreshFunc(deleteRocketmqMigrationTaskClient, instanceID),
-		Timeout:      d.Timeout(schema.TimeoutDelete),
-		PollInterval: 10 * time.Second,
+	deleteOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		JSONBody: map[string]interface{}{
+			"task_ids": []string{taskId},
+		},
 	}
-	_, err = stateConf.WaitForStateContext(ctx)
+
+	// DELETED means the RocketMQ instance does not exist.
+	err = waitForInstanceStatusCompleted(ctx, client, instanceId, []string{"RUNNING", "DELETED"}, d.Timeout(schema.TimeoutDelete))
 	if err != nil {
-		return diag.Errorf("error waiting for the status of the RocketMQ instance (%s) to be RUNNING: %s", instanceID, err)
+		return diag.Errorf("error waiting for the status of the instance (%s) to be RUNNING: %s", instanceId, err)
 	}
 
-	_, err = deleteRocketmqMigrationTaskClient.Request("DELETE", deleteRocketmqMigrationTaskPath, &deleteRocketmqMigrationTaskOpt)
+	_, err = client.Request("POST", deletePath, &deleteOpt)
 	if err != nil {
-		return diag.Errorf("error deleting RocketMQ migration task: %s", err)
+		return common.CheckDeletedDiag(d, err, fmt.Sprintf("error deleting migration task (%s)", taskId))
 	}
 
-	return resourceRocketmqMigrationTaskRead(ctx, d, meta)
+	return nil
 }
 
 // resourceRocketmqMigrationTaskImportState is used to import an id with format <instance_id>/<id>

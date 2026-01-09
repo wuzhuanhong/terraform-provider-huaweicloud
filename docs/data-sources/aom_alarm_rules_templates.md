@@ -1,5 +1,5 @@
 ---
-subcategory: "Application Operations Management (AOM)"
+subcategory: "Application Operations Management (AOM 2.0)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_aom_alarm_rules_templates"
 description: |-
@@ -256,6 +256,8 @@ The `trigger_conditions` block supports:
 * `promql_for` - Indicates the native Prometheus monitoring duration.
 
 * `query_match` - Indicates the query filter criteria.
+
+* `query_param` - Indicates the query parameters.
 
 * `thresholds` - Key-value pair. The key indicates the alarm severity while the value indicates the alarm threshold.
 

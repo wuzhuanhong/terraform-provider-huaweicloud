@@ -11,6 +11,12 @@
               },
               "name": {
                 "type": "string",
+                "description": "Specifies the IAM project name to query",
+                "optional": true
+              },
+              "project_id": {
+                "type": "string",
+                "description": "Specifies the IAM project id to query. This parameter conflicts with `name`.",
                 "optional": true
               },
               "projects": {

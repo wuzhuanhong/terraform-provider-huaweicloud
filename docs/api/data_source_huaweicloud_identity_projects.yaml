@@ -11,3 +11,6 @@ paths:
     /v3/projects:
         GET:
             tag: IAM
+    /v3/projects/{project_id}:
+        GET:
+            tag: IAM

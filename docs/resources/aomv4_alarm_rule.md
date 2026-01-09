@@ -1,5 +1,5 @@
 ---
-subcategory: "Application Operations Management (AOM)"
+subcategory: "Application Operations Management (AOM 2.0)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_aomv4_alarm_rule"
 description: |-
@@ -355,7 +355,7 @@ The `trigger_conditions` block supports:
 
 * `operator` - (Optional, String) Specifies the operator. Options: >, <, =, >=, and <=.
 
-* `promql_expr` - (Optional, List) Specifies the prometheus statement template.
+* `promql_expr` - (Optional, String) Specifies the prometheus statement template.
 
 * `promql_for` - (Optional, String) Specifies the native prometheus monitoring duration.
 

@@ -8,10 +8,16 @@ host: huaweicloud.com
 tags:
     - name: Workspace
 paths:
+    /v1/{project_id}/app-servers:
+        GET:
+            tag: Workspace
     /v1/{project_id}/app-servers/actions/batch-change-image:
         POST:
             tag: Workspace
     /v1/{project_id}/app-servers/actions/batch-maint:
+        PATCH:
+            tag: Workspace
+    /v1/{project_id}/app-servers/actions/batch-reboot:
         PATCH:
             tag: Workspace
     /v1/{project_id}/app-servers/actions/batch-reinstall:
@@ -20,6 +26,15 @@ paths:
     /v1/{project_id}/app-servers/actions/batch-rejoin-domain:
         PATCH:
             tag: Workspace
+    /v1/{project_id}/app-servers/actions/batch-start:
+        PATCH:
+            tag: Workspace
+    /v1/{project_id}/app-servers/actions/batch-stop:
+        PATCH:
+            tag: Workspace
     /v1/{project_id}/app-servers/actions/batch-update-tsvi:
         PATCH:
+            tag: Workspace
+    /v2/{project_id}/job/{job_id}:
+        GET:
             tag: Workspace

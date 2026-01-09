@@ -1,0 +1,60 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_identityv5_policies": {
+          "block": {
+            "attributes": {
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "language": {
+                "type": "string",
+                "optional": true
+              },
+              "only_attached": {
+                "type": "bool",
+                "optional": true
+              },
+              "path_prefix": {
+                "type": "string",
+                "optional": true
+              },
+              "policies": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "attachment_count": "number",
+                      "created_at": "string",
+                      "default_version_id": "string",
+                      "description": "string",
+                      "path": "string",
+                      "policy_id": "string",
+                      "policy_name": "string",
+                      "policy_type": "string",
+                      "updated_at": "string",
+                      "urn": "string"
+                    }
+                  ]
+                ],
+                "description": "The list of IAM policies.",
+                "computed": true
+              },
+              "policy_id": {
+                "type": "string",
+                "optional": true
+              },
+              "policy_type": {
+                "type": "string",
+                "optional": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

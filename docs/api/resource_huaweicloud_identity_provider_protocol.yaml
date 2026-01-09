@@ -1,0 +1,19 @@
+info:
+    version: ""
+    title: resource_huaweicloud_identity_provider_protocol
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: IAM
+paths:
+    /v3/OS-FEDERATION/identity_providers/{idp_id}/protocols/{protocol_id}:
+        DELETE:
+            tag: IAM
+        GET:
+            tag: IAM
+        PATCH:
+            tag: IAM
+        PUT:
+            tag: IAM

@@ -138,7 +138,7 @@ The following arguments are supported:
   -> **NOTE:** Removing an AZ may disconnect existing connections. Exercise caution when performing this
   operation.
 
-* `loadbalancer_type` - (Optional, String, ForceNew) Specifies the type of the load balancer. Value options:
+* `loadbalancer_type` - (Optional, String, NonUpdatable) Specifies the type of the load balancer. Value options:
   + **gateway**: indicates a gateway load balancer.
   + Keep empty(default) indicates other types of load balancers.
 
@@ -151,8 +151,7 @@ The following arguments are supported:
 * `cross_vpc_backend` - (Optional, Bool) Enable this if you want to associate the IP addresses of backend servers with
   your load balancer. Can only be true when updating. Defaults to **false**.
 
-* `vpc_id` - (Optional, String, ForceNew) The vpc on which to create the load balancer. Changing this creates a new
-  load balancer.
+* `vpc_id` - (Optional, String, NonUpdatable) The vpc on which to create the load balancer.
 
 * `ipv4_subnet_id` - (Optional, String) The **IPv4 subnet ID** of the subnet on which to allocate the load balancer
   ipv4 address.
@@ -165,39 +164,49 @@ The following arguments are supported:
 
 * `ipv6_address` - (Optional, String) The ipv6 address of the Load Balancer.
 
-* `ipv4_eip_id` - (Optional, String, ForceNew) The ID of the EIP. Changing this parameter will create a new resource.
+* `ipv4_eip_id` - (Optional, String, NonUpdatable) The ID of the EIP.
 
   -> **NOTE:** If the ipv4_eip_id parameter is configured, you do not need to configure the bandwidth parameters:
   `iptype`, `bandwidth_charge_mode`, `bandwidth_size`, `share_type` and `bandwidth_id`.
 
-* `iptype` - (Optional, String, ForceNew) Elastic IP type. Changing this parameter will create a new resource.
+* `iptype` - (Optional, String, NonUpdatable) Elastic IP type.
 
-* `bandwidth_charge_mode` - (Optional, String, ForceNew) Bandwidth billing type. Value options:
+* `bandwidth_charge_mode` - (Optional, String, NonUpdatable) Bandwidth billing type. Value options:
   + **bandwidth**: Billed by bandwidth.
   + **traffic**: Billed by traffic.
   
   It is mandatory when `iptype` is set and `bandwidth_id` is empty.
-  Changing this parameter will create a new resource.
 
-* `sharetype` - (Optional, String, ForceNew) Bandwidth sharing type. Value options:
+* `sharetype` - (Optional, String, NonUpdatable) Bandwidth sharing type. Value options:
   + **PER**: Dedicated bandwidth.
   + **WHOLE**: Shared bandwidth.
   
   It is mandatory when `iptype` is set and `bandwidth_id` is empty.
-  Changing this parameter will create a new resource.
 
-* `bandwidth_size` - (Optional, Int, ForceNew) Bandwidth size. It is mandatory when `iptype` is set and `bandwidth_id`
-  is empty. Changing this parameter will create a new resource.
+* `bandwidth_size` - (Optional, Int, NonUpdatable) Bandwidth size. It is mandatory when `iptype` is set and `bandwidth_id`
+  is empty.
 
-* `bandwidth_id` - (Optional, String, ForceNew) Bandwidth ID of the shared bandwidth. It is mandatory when `sharetype`
-  is **WHOLE**. Changing this parameter will create a new resource.
+* `bandwidth_id` - (Optional, String, NonUpdatable) Bandwidth ID of the shared bandwidth. It is mandatory when `sharetype`
+  is **WHOLE**.
 
   -> **NOTE:** If the `bandwidth_id` parameter is configured, you can not configure the parameters:
   `bandwidth_charge_mode`, `bandwidth_size`.
 
 * `l4_flavor_id` - (Optional, String) The L4 flavor id of the load balancer.
+  + If neither `l4_flavor_id` nor `l7_flavor_id` is specified, the default flavor is used. The default flavor varies by
+    site.
+  + If the flavor type is **L4**, the load balancer uses the fixed flavors and will be billed by the flavor you select.
+  + If the flavor type is **L4_elastic_max**, the load balancer uses the elastic flavors and will be billed by how many
+    LCUs you use.
 
 * `l7_flavor_id` - (Optional, String) The L7 flavor id of the load balancer.
+  + If neither `l4_flavor_id` nor `l7_flavor_id` is specified, the default flavor is used. The default flavor varies by
+    site.
+  + If the flavor type is **L7**, the load balancer uses the fixed flavors and will be billed by the flavor you select.
+  + If the flavor type is **L7_elastic_max**, the load balancer uses the elastic flavors and will be billed by how many
+    LCUs you use.
+
+* `gw_flavor_id` - (Optional, String) The flavor ID of the gateway load balancer.
 
 * `backend_subnets` - (Optional, List) The IDs of subnets on the downstream plane.
   + If this parameter is not specified, select subnets as follows:
@@ -255,8 +264,6 @@ The following arguments are supported:
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The ID of the load balancer.
-
-* `gw_flavor_id` - The flavor ID of the gateway load balancer.
 
 * `ipv4_port_id` - The ID of the port bound to the private IPv4 address of the load balancer.
 

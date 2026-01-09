@@ -1,0 +1,58 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_identityv5_users": {
+          "block": {
+            "attributes": {
+              "group_id": {
+                "type": "string",
+                "description": "The ID of the IAM user.",
+                "optional": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "user_id": {
+                "type": "string",
+                "optional": true
+              },
+              "users": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "created_at": "string",
+                      "description": "string",
+                      "enabled": "bool",
+                      "is_root_user": "bool",
+                      "last_login_at": "string",
+                      "password_expires_at": "string",
+                      "password_reset_required": "bool",
+                      "tags": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "tag_key": "string",
+                            "tag_value": "string"
+                          }
+                        ]
+                      ],
+                      "urn": "string",
+                      "user_id": "string",
+                      "user_name": "string"
+                    }
+                  ]
+                ],
+                "computed": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -378,6 +378,10 @@ func resourceSchemeTemplateMetricTriggerConditions() *schema.Schema {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
+				"query_param": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
 				"metric_namespace": {
 					Type:     schema.TypeString,
 					Optional: true,
@@ -387,9 +391,8 @@ func resourceSchemeTemplateMetricTriggerConditions() *schema.Schema {
 					Optional: true,
 				},
 				"promql_expr": {
-					Type:     schema.TypeSet,
+					Type:     schema.TypeString,
 					Optional: true,
-					Elem:     &schema.Schema{Type: schema.TypeString},
 				},
 				"promql_for": {
 					Type:     schema.TypeString,
@@ -401,6 +404,7 @@ func resourceSchemeTemplateMetricTriggerConditions() *schema.Schema {
 				},
 			},
 		},
+		Set: resourceMetricTriggerConditionHash,
 	}
 }
 
@@ -417,7 +421,7 @@ func resourceAlarmRulesTemplateCreate(ctx context.Context, d *schema.ResourceDat
 	createPath = strings.ReplaceAll(createPath, "{project_id}", client.ProjectID)
 	createOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		MoreHeaders:      buildHeaders(cfg, d),
+		MoreHeaders:      buildRequestMoreHeaders(cfg.GetEnterpriseProjectID(d)),
 		JSONBody:         utils.RemoveNil(buildCreateAlarmRulesTemplateBodyParams(d)),
 	}
 
@@ -598,7 +602,7 @@ func buildTemplateMetricAlarmTemplateSpecTriggerConditions(paramsList []interfac
 			"mix_promql":              utils.ValueIgnoreEmpty(params["mix_promql"]),
 			"metric_namespace":        utils.ValueIgnoreEmpty(params["metric_namespace"]),
 			"metric_unit":             utils.ValueIgnoreEmpty(params["metric_unit"]),
-			"promql_expr":             utils.ValueIgnoreEmpty(params["promql_expr"].(*schema.Set).List()),
+			"promql_expr":             utils.ValueIgnoreEmpty(params["promql_expr"]),
 			"promql_for":              utils.ValueIgnoreEmpty(params["promql_for"]),
 			"aom_monitor_level":       utils.ValueIgnoreEmpty(params["aom_monitor_level"]),
 			"metric_statistic_method": utils.ValueIgnoreEmpty(params["metric_statistic_method"]),
@@ -694,10 +698,13 @@ func resourceAlarmRulesTemplateRead(_ context.Context, d *schema.ResourceData, m
 }
 
 func getAlarmRulesTemplate(client *golangsdk.ServiceClient, d *schema.ResourceData) (interface{}, error) {
-	getHttpUrl := "v4/{project_id}/alarm-rules-template?id={id}"
+	var (
+		getHttpUrl = "v4/{project_id}/alarm-rules-template?id={id}"
+		templateId = d.Id()
+	)
 	getPath := client.Endpoint + getHttpUrl
 	getPath = strings.ReplaceAll(getPath, "{project_id}", client.ProjectID)
-	getPath = strings.ReplaceAll(getPath, "{id}", d.Id())
+	getPath = strings.ReplaceAll(getPath, "{id}", templateId)
 	getOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
 		MoreHeaders: map[string]string{
@@ -708,16 +715,23 @@ func getAlarmRulesTemplate(client *golangsdk.ServiceClient, d *schema.ResourceDa
 
 	getResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving alarm rules template: %s", err)
+		return nil, err
 	}
 	getRespBody, err := utils.FlattenResponse(getResp)
 	if err != nil {
-		return nil, fmt.Errorf("error flattening alarm rules template: %s", err)
+		return nil, err
 	}
 
 	template := utils.PathSearch("[]|[0]", getRespBody, nil)
 	if template == nil {
-		return nil, golangsdk.ErrDefault404{}
+		return nil, golangsdk.ErrDefault404{
+			ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
+				Method:    "GET",
+				URL:       "/v4/{project_id}/alarm-rules-template",
+				RequestId: "NONE",
+				Body:      []byte(fmt.Sprintf("the alarm rules template (%s) does not exist", templateId)),
+			},
+		}
 	}
 
 	return template, nil
@@ -849,7 +863,7 @@ func resourceAlarmRulesTemplateUpdate(ctx context.Context, d *schema.ResourceDat
 		updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
 		updateOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			MoreHeaders:      buildHeaders(cfg, d),
+			MoreHeaders:      buildRequestMoreHeaders(cfg.GetEnterpriseProjectID(d)),
 			JSONBody:         utils.RemoveNil(buildUpdateAlarmRulesTemplateBodyParams(d)),
 		}
 
@@ -888,7 +902,7 @@ func resourceAlarmRulesTemplateDelete(_ context.Context, d *schema.ResourceData,
 	deletePath = strings.ReplaceAll(deletePath, "{project_id}", client.ProjectID)
 	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		MoreHeaders:      buildHeaders(cfg, d),
+		MoreHeaders:      buildRequestMoreHeaders(cfg.GetEnterpriseProjectID(d)),
 		JSONBody: map[string]interface{}{
 			"alarm_rule_templates": []string{d.Id()},
 		},

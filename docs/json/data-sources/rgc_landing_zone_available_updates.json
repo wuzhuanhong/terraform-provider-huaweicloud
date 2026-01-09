@@ -1,0 +1,49 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "data_source_schemas": {
+        "huaweicloud_rgc_landing_zone_available_updates": {
+          "block": {
+            "attributes": {
+              "baseline_update_available": {
+                "type": "bool",
+                "computed": true
+              },
+              "control_update_available": {
+                "type": "bool",
+                "computed": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "landing_zone_update_available": {
+                "type": "bool",
+                "computed": true
+              },
+              "region": {
+                "type": "string",
+                "computed": true
+              },
+              "service_landing_zone_version": {
+                "type": "string",
+                "computed": true
+              },
+              "user_landing_zone_version": {
+                "type": "string",
+                "computed": true
+              }
+            }
+          },
+          "product": {
+            "short": "RGC",
+            "name": "Resource Governance Center",
+            "catalog": "Management & Governance",
+            "name_cn": "资源治理中心",
+            "catalog_cn": "管理与监管"
+          }
+        }
+      }
+    }
+  }
+}

@@ -31,6 +31,10 @@
                 "type": "string",
                 "computed": true
               },
+              "role_id": {
+                "type": "string",
+                "optional": true
+              },
               "type": {
                 "type": "string",
                 "computed": true

@@ -10,7 +10,7 @@
                 "description": "Specifies the ID of the application group.",
                 "required": true
               },
-              "apps": {
+              "applications": {
                 "type": [
                   "list",
                   [

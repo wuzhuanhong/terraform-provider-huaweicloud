@@ -9,6 +9,10 @@
                 "type": "string",
                 "computed": true
               },
+              "delete_flag": {
+                "type": "bool",
+                "optional": true
+              },
               "description": {
                 "type": "string",
                 "optional": true

@@ -156,6 +156,12 @@ type CreateOps struct {
 
 	// The private IP addresses of the Kafka instance.
 	TenantIps []string `json:"tenant_ips,omitempty"`
+
+	// Indicates whether to enable disk encryption.
+	DiskEncryptedEnable bool `json:"disk_encrypted_enable,omitempty"`
+
+	// The key ID of the disk encryption.
+	DiskEncryptedKey string `json:"disk_encrypted_key,omitempty"`
 }
 
 type BssParam struct {
@@ -236,6 +242,20 @@ func CreateWithEngine(client *golangsdk.ServiceClient, ops CreateOpsBuilder, eng
 	}
 
 	_, r.Err = client.Post(createURLWithEngine(engine, client), b, &r.Body, &golangsdk.RequestOpts{
+		OkCodes: []int{200},
+	})
+
+	return
+}
+
+func CreateInstance(client *golangsdk.ServiceClient, ops CreateOpsBuilder) (r CreateResult) {
+	b, err := ops.ToInstanceCreateMap()
+	if err != nil {
+		r.Err = err
+		return
+	}
+
+	_, r.Err = client.Post(createInstanceURL(client), b, &r.Body, &golangsdk.RequestOpts{
 		OkCodes: []int{200},
 	})
 
@@ -371,6 +391,29 @@ func Resize(client *golangsdk.ServiceClient, id string, opts ResizeInstanceOpts)
 
 	var rst golangsdk.Result
 	_, err = client.Post(extend(client, id), b, &rst.Body, &golangsdk.RequestOpts{
+		MoreHeaders: requestOpts.MoreHeaders,
+	})
+
+	if err == nil {
+		var r struct {
+			JobID string `json:"job_id"`
+		}
+		if err = rst.ExtractInto(&r); err != nil {
+			return "", err
+		}
+		return r.JobID, nil
+	}
+	return "", err
+}
+
+func ExtendInstance(client *golangsdk.ServiceClient, instanceId string, opts ResizeInstanceOpts) (string, error) {
+	b, err := golangsdk.BuildRequestBody(opts, "")
+	if err != nil {
+		return "", err
+	}
+
+	var rst golangsdk.Result
+	_, err = client.Post(extendInstanceURL(client, instanceId), b, &rst.Body, &golangsdk.RequestOpts{
 		MoreHeaders: requestOpts.MoreHeaders,
 	})
 

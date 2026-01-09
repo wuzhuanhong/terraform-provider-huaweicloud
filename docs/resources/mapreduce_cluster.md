@@ -374,8 +374,9 @@ The following arguments are supported:
 * `name` - (Required, String) Specifies the name of the MapReduce cluster. The name can contain 2 to 64
   characters, which may consist of letters, digits, underscores (_) and hyphens (-).
 
-* `version` - (Required, String, ForceNew) Specifies the MapReduce cluster version. The valid values are `MRS 1.9.2`
-  , `MRS 3.0.5` and `MRS 3.1.0`. Changing this will create a new MapReduce cluster resource.
+* `version` - (Required, String, ForceNew) Specifies the MapReduce cluster version.  
+  Changing this will create a new MapReduce cluster resource.  
+  For the versions supported by the cluster, please refer to the [documentation](https://support.huaweicloud.com/intl/en-us/bulletin-mrs/mrs_13_000014.html#section3).
 
 * `component_list` - (Required, List, ForceNew) Specifies the list of component names. For the components supported by
   the cluster, please following [reference](https://support.huaweicloud.com/intl/en-us/productdesc-mrs/mrs_08_0005.html)
@@ -484,8 +485,11 @@ The EIP must have been created and must be in the same region as the cluster.
   The [object](#BootstrapScripts) structure is documented below.
   Changing this will create a new MapReduce cluster resource.
 
-* `smn_notify` - (Optional, List, ForceNew) Specifies the alarm configuration of the cluster. The [smn_notify](#SMNNotify)
-  structure is documented below.
+* `smn_notify` - (Optional, List, ForceNew) Specifies the alarm configuration of the cluster.  
+  The [smn_notify](#SMNNotify) block is documented below.  
+  Changing this will create a new MapReduce cluster resource.
+
+* `mrs_ecs_default_agency` - (Optional, String, ForceNew) Specifies the default agency name bound to the cluster node.  
   Changing this will create a new MapReduce cluster resource.
 
 * `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the cluster.  
@@ -512,8 +516,9 @@ The `master_nodes` block supports:
 * `flavor` - (Required, String, ForceNew) Specifies the instance specifications for each nodes in node group.
   Changing this will create a new MapReduce cluster resource.
 
-* `node_number` - (Required, Int, ForceNew) Specifies the number of nodes for the node group.  
-  Changing this will create a new MapReduce cluster resource.
+* `node_number` - (Required, Int) Specifies the number of nodes for the node group.  
+
+  -> Master nodes support expansion only, shrinking is not allowed.
 
 * `root_volume_type` - (Required, String, ForceNew) Specifies the system disk flavor of the nodes. Changing this will
   create a new MapReduce cluster resource.
@@ -553,6 +558,18 @@ The `master_nodes` block supports:
 
   -> `DBService` is a basic component of a cluster. Components such as Hive, Hue, Oozie, Loader, and Redis, and Loader
    store their metadata in DBService, and provide the metadata backup and restoration functions by using DBService.
+
+* `skip_bootstrap_scripts` - (Optional, Bool) Specifies whether to skip bootstrap scripts when the cluster
+  is expanded.  
+  Defaults to **true**.
+  + **true**: Skip bootstrap scripts.
+  + **false**: Do not skip bootstrap scripts.
+
+* `scale_without_start` - (Optional, Bool) Specifies whether to start the components on the node after it has
+  been expanded.  
+  Defaults to **false**.
+  + **true**: Do not start the components on the node after it has been expanded.
+  + **false**: Start the components on the node after it has been expanded.
   
 * `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the cluster.  
   Valid values are **prePaid** and **postPaid**, defaults to **postPaid**.  
@@ -592,10 +609,14 @@ The `analysis_core_nodes` and `streaming_core_nodes` blocks support:
 
 * `data_volume_count` - (Required, Int, ForceNew) Specifies the data disk number of the nodes. The number configuration
   of each node are as follows:
-  + **analysis_core_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
-  + **streaming_core_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
-  + **analysis_task_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
-  + **streaming_task_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
+  + **analysis_core_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
+  + **streaming_core_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
+  + **analysis_task_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
+  + **streaming_task_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
 
   Changing this will create a new MapReduce cluster resource.
   
@@ -627,6 +648,24 @@ The `analysis_core_nodes` and `streaming_core_nodes` blocks support:
 
   -> `DBService` is a basic component of a cluster. Components such as Hive, Hue, Oozie, Loader, and Redis, and Loader
    store their metadata in DBService, and provide the metadata backup and restoration functions by using DBService.
+
+* `resource_ids` - (Optional, List) Specifies the resource node IDs to be shrunk.  
+  Only ECS nodes with abnormal status can be deleted.
+
+  -> When the `resource_ids` parameter is specified for shrinking, the `node_count` parameter in
+     each node group is invalid.
+
+* `skip_bootstrap_scripts` - (Optional, Bool) Specifies whether to skip bootstrap scripts when the cluster
+  is expanded.  
+  Defaults to **true**.
+  + **true**: Skip bootstrap scripts.
+  + **false**: Do not skip bootstrap scripts.
+
+* `scale_without_start` - (Optional, Bool) Specifies whether to start the components on the node after it has
+  been expanded.  
+  Defaults to **false**.
+  + **true**: Do not start the components on the node after it has been expanded.
+  + **false**: Start the components on the node after it has been expanded.
 
   + `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the cluster.  
   Valid values are **prePaid** and **postPaid**, defaults to **postPaid**.  
@@ -666,10 +705,14 @@ The `analysis_task_nodes` and `streaming_task_nodes` blocks support:
 
 * `data_volume_count` - (Required, Int, ForceNew) Specifies the data disk number of the nodes. The number configuration
   of each node are as follows:
-  + **analysis_core_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
-  + **streaming_core_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
-  + **analysis_task_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
-  + **streaming_task_nodes**: minimum is one and the maximum is subject to the configuration of the corresponding flavor.
+  + **analysis_core_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
+  + **streaming_core_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
+  + **analysis_task_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
+  + **streaming_task_nodes**: minimum is one and the maximum is subject to the configuration of
+    the corresponding flavor.
 
   Changing this will create a new MapReduce cluster resource.
   
@@ -702,6 +745,24 @@ The `analysis_task_nodes` and `streaming_task_nodes` blocks support:
   -> `DBService` is a basic component of a cluster. Components such as Hive, Hue, Oozie, Loader, and Redis, and Loader
    store their metadata in DBService, and provide the metadata backup and restoration functions by using DBService.
 
+* `resource_ids` - (Optional, List) Specifies the resource node IDs to be shrunk.  
+  Only ECS nodes with abnormal status can be deleted.
+
+  -> When the `resource_ids` parameter is specified for shrinking, the `node_count` parameter in
+     each node group is invalid.
+
+* `skip_bootstrap_scripts` - (Optional, Bool) Specifies whether to skip bootstrap scripts when the cluster
+  is expanded.  
+  Defaults to **true**.
+  + **true**: Skip bootstrap scripts.
+  + **false**: Do not skip bootstrap scripts.
+
+* `scale_without_start` - (Optional, Bool) Specifies whether to start the components on the node after it has
+  been expanded.  
+  Defaults to **false**.
+  + **true**: Do not start the components on the node after it has been expanded.
+  + **false**: Start the components on the node after it has been expanded.
+
 <a name="v2_mapreduce_cluster_custom_nodes"></a>
 The `custom_nodes` block supports:
 
@@ -711,8 +772,7 @@ The `custom_nodes` block supports:
 * `flavor` - (Required, String, ForceNew) Specifies the instance specifications for each nodes in node group.
   Changing this will create a new MapReduce cluster resource.
 
-* `node_number` - (Required, Int, ForceNew) Specifies the number of nodes for the node group.  
-  Changing this will create a new MapReduce cluster resource.
+* `node_number` - (Required, Int) Specifies the number of nodes for the node group.  
 
 * `root_volume_type` - (Required, String, ForceNew) Specifies the system disk flavor of the nodes. Changing this will
   create a new MapReduce cluster resource.
@@ -752,6 +812,24 @@ The `custom_nodes` block supports:
 
   -> `DBService` is a basic component of a cluster. Components such as Hive, Hue, Oozie, Loader, and Redis, and Loader
    store their metadata in DBService, and provide the metadata backup and restoration functions by using DBService.
+
+* `resource_ids` - (Optional, List) Specifies the resource node IDs to be shrunk.  
+  Only ECS nodes with abnormal status can be deleted.
+
+  -> When the `resource_ids` parameter is specified for shrinking, the `node_count` parameter in
+     each node group is invalid.
+
+* `skip_bootstrap_scripts` - (Optional, Bool) Specifies whether to skip bootstrap scripts when the cluster
+  is expanded.  
+  Defaults to **true**.
+  + **true**: Skip bootstrap scripts.
+  + **false**: Do not skip bootstrap scripts.
+
+* `scale_without_start` - (Optional, Bool) Specifies whether to start the components on the node after it has
+  been expanded.  
+  Defaults to **false**.
+  + **true**: Do not start the components on the node after it has been expanded.
+  + **false**: Start the components on the node after it has been expanded.
 
 * `charging_mode` - (Optional, String, ForceNew) Specifies the charging mode of the cluster.  
   Valid values are **prePaid** and **postPaid**, defaults to **postPaid**.  
@@ -797,7 +875,8 @@ The `configs` block supports:
 <a name="ExternalDatasources"></a>
 The `external_datasources` block supports:
 
-* `component_name` - (Required, String, ForceNew) Specifies the component name. The valid values are `Hive` and `Ranger`.
+* `component_name` - (Required, String, ForceNew) Specifies the component name.  
+  The valid values are `Hive` and `Ranger`.  
   Changing this will create a new MapReduce cluster resource.
 
 * `role_type` - (Required, String, ForceNew) Specifies the component role type.
@@ -835,7 +914,8 @@ The `bootstrap_scripts` block supports:
 
 * `nodes` - (Required, List, ForceNew) Specifies names of the node group where the bootstrap action script is executed.
 
-* `fail_action` - (Required, String, ForceNew) Specifies the action after the bootstrap action script fails to be executed.
+* `fail_action` - (Required, String, ForceNew) Specifies the action after the bootstrap action script fails to be
+  executed.
   The options are as follows:
     + **continue**: Continue to execute subsequent scripts.
     + **errorout**: Stop the action.
@@ -848,8 +928,8 @@ The `bootstrap_scripts` block supports:
 
 * `parameters` - (Optional, String, ForceNew) Specifies bootstrap action script parameters.
 
-* `active_master` - (Optional, Bool, ForceNew) Specifies whether the bootstrap action script runs only on active master nodes.
-  The default value is **false**, indicating that the bootstrap action script can run on all master nodes.
+* `active_master` - (Optional, Bool, ForceNew) Specifies whether the bootstrap action script runs only on active master
+  nodes. The default value is **false**, indicating that the bootstrap action script can run on all master nodes.
 
 * `before_component_start` - (Optional, Bool, ForceNew) Specifies whether the bootstrap action script is executed
   before component start.
@@ -910,11 +990,20 @@ terraform import huaweicloud_mapreduce_cluster.test <id>
 Note that the imported state may not be identical to your resource definition, due to some attributes missing from the
 API response, security or some other reason. The missing attributes include:
 `manager_admin_pass`, `node_admin_pass`,`template_id`, `assigned_roles`, `external_datasources`, `component_configs`,
-`smn_notify`, `charging_mode`, `period`, `period_unit`, `auto_renew`, `streaming_core_nodes.0.charging_mode`,
-`streaming_core_nodes.0.period`, `streaming_core_nodes.0.period_unit`, `streaming_core_nodes.0.auto_renew`,
+`smn_notify`, `charging_mode`, `period`, `period_unit`, `auto_renew`, `master_nodes.0.charging_mode`,
+`master_nodes.0.period`, `master_nodes.0.period_unit`, `master_nodes.0.auto_renew`,
+`master_nodes.0.skip_bootstrap_scripts`, `master_nodes.0.scale_without_start`, `streaming_core_nodes.0.charging_mode`,
+`streaming_core_nodes.0.resource_ids`, `streaming_core_nodes.0.skip_bootstrap_scripts`,
+`streaming_core_nodes.0.scale_without_start`, `streaming_task_nodes.0.resource_ids`,
+`streaming_task_nodes.0.skip_bootstrap_scripts`, `streaming_task_nodes.0.scale_without_start`,
 `analysis_core_nodes.0.charging_mode`, `analysis_core_nodes.0.period`, `analysis_core_nodes.0.period_unit`,
-`analysis_core_nodes.0.auto_renew`, `custom_nodes.0.charging_mode`, `custom_nodes.0.period`, `custom_nodes.0.period_unit`
-and `custom_nodes.0.auto_renew`. It is generally recommended running `terraform plan` after importing a cluster.
+`analysis_core_nodes.0.auto_renew`, `analysis_core_nodes.0.resource_ids`,
+`analysis_core_nodes.0.skip_bootstrap_scripts`, `analysis_core_nodes.0.scale_without_start`,
+`analysis_task_nodes.0.resource_ids`, `analysis_task_nodes.0.skip_bootstrap_scripts`,
+`analysis_task_nodes.0.scale_without_start`, `custom_nodes.0.charging_mode`, `custom_nodes.0.period`,
+`custom_nodes.0.period_unit`, `custom_nodes.0.auto_renew`, `custom_nodes.0.resource_ids`,
+`custom_nodes.0.skip_bootstrap_scripts` and `custom_nodes.0.scale_without_start`,
+It is generally recommended running `terraform plan` after importing a cluster.
 You can then decide if changes should be applied to the cluster, or the resource definition
 should be updated to align with the cluster. Also you can ignore changes as below.
 
@@ -924,11 +1013,50 @@ resource "huaweicloud_mapreduce_cluster" "test" {
 
   lifecycle {
     ignore_changes = [
-      manager_admin_pass, node_admin_pass, template_id, assigned_roles, external_datasources, component_configs, smn_notify,
-      charging_mode, period, period_unit, auto_renew, master_nodes.0.charging_mode, master_nodes.0.period, master_nodes.0.period_unit,
-      master_nodes.0.auto_renew, streaming_core_nodes.0.charging_mode, streaming_core_nodes.0.period, streaming_core_nodes.0.period_unit,
-      streaming_core_nodes.0.auto_renew, analysis_core_nodes.0.charging_mode, analysis_core_nodes.0.period, analysis_core_nodes.0.period_unit,
-      analysis_core_nodes.0.auto_renew, custom_nodes.0.charging_mode, custom_nodes.0.period, custom_nodes.0.period_unit, custom_nodes.0.auto_renew
+      manager_admin_pass,
+      node_admin_pass,
+      template_id,
+      assigned_roles,
+      external_datasources,
+      component_configs,
+      smn_notify,
+      charging_mode,
+      period,
+      period_unit,
+      auto_renew,
+      master_nodes.0.charging_mode,
+      master_nodes.0.period,
+      master_nodes.0.period_unit,
+      master_nodes.0.auto_renew,
+      master_nodes.0.skip_bootstrap_scripts,
+      master_nodes.0.scale_without_start,
+      streaming_core_nodes.0.charging_mode,
+      streaming_core_nodes.0.period,
+      streaming_core_nodes.0.period_unit,
+      streaming_core_nodes.0.auto_renew,
+      streaming_core_nodes.0.resource_ids,
+      streaming_core_nodes.0.skip_bootstrap_scripts,
+      streaming_core_nodes.0.scale_without_start,
+      streaming_task_nodes.0.resource_ids,
+      streaming_task_nodes.0.skip_bootstrap_scripts,
+      streaming_task_nodes.0.scale_without_start,
+      analysis_core_nodes.0.charging_mode,
+      analysis_core_nodes.0.period,
+      analysis_core_nodes.0.period_unit,
+      analysis_core_nodes.0.auto_renew,
+      analysis_core_nodes.0.resource_ids,
+      analysis_core_nodes.0.skip_bootstrap_scripts,
+      analysis_core_nodes.0.scale_without_start,
+      analysis_task_nodes.0.resource_ids,
+      analysis_task_nodes.0.skip_bootstrap_scripts,
+      analysis_task_nodes.0.scale_without_start,
+      custom_nodes.0.resource_ids,
+      custom_nodes.0.skip_bootstrap_scripts,
+      custom_nodes.0.scale_without_start
+      custom_nodes.0.charging_mode,
+      custom_nodes.0.period,
+      custom_nodes.0.period_unit,
+      custom_nodes.0.auto_renew,
     ]
   }
 }

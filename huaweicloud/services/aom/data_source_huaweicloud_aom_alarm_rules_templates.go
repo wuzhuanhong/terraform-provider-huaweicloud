@@ -372,6 +372,10 @@ func dataSourceSchemeTemplateMetricTriggerConditions() *schema.Schema {
 					Type:     schema.TypeString,
 					Computed: true,
 				},
+				"query_param": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
 				"metric_namespace": {
 					Type:     schema.TypeString,
 					Computed: true,
@@ -381,9 +385,8 @@ func dataSourceSchemeTemplateMetricTriggerConditions() *schema.Schema {
 					Computed: true,
 				},
 				"promql_expr": {
-					Type:     schema.TypeList,
+					Type:     schema.TypeString,
 					Computed: true,
-					Elem:     &schema.Schema{Type: schema.TypeString},
 				},
 				"promql_for": {
 					Type:     schema.TypeString,

@@ -92,7 +92,7 @@ func resourceDashboardCreate(ctx context.Context, d *schema.ResourceData, meta i
 	createPath = strings.ReplaceAll(createPath, "{project_id}", client.ProjectID)
 	createOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		MoreHeaders:      buildHeaders(cfg, d),
+		MoreHeaders:      buildRequestMoreHeaders(cfg.GetEnterpriseProjectID(d)),
 		JSONBody:         utils.RemoveNil(buildCreateDashboardBodyParams(d)),
 	}
 
@@ -201,22 +201,25 @@ func getDashboard(cfg *config.Config, client *golangsdk.ServiceClient, d *schema
 	getPath = strings.ReplaceAll(getPath, "{dashboard_id}", d.Id())
 	getOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		MoreHeaders:      buildHeaders(cfg, d),
+		MoreHeaders:      buildRequestMoreHeaders(cfg.GetEnterpriseProjectID(d)),
 	}
 	getResp, err := client.Request("GET", getPath, &getOpt)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving dashboard: %s", err)
+		return nil, err
 	}
 	getRespBody, err := utils.FlattenResponse(getResp)
 	if err != nil {
-		return nil, fmt.Errorf("error flattening dashboard: %s", err)
+		return nil, err
 	}
 
 	return getRespBody, nil
 }
 
 func filterDashboard(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
-	listHttpUrl := "v2/{project_id}/aom/dashboards"
+	var (
+		listHttpUrl = "v2/{project_id}/aom/dashboards"
+		dashboardId = d.Id()
+	)
 	listPath := client.Endpoint + listHttpUrl
 	listPath = strings.ReplaceAll(listPath, "{project_id}", client.ProjectID)
 	listOpt := golangsdk.RequestOpts{
@@ -229,17 +232,24 @@ func filterDashboard(client *golangsdk.ServiceClient, d *schema.ResourceData) er
 
 	listResp, err := client.Request("GET", listPath, &listOpt)
 	if err != nil {
-		return fmt.Errorf("error retrieving dashboards: %s", err)
+		return err
 	}
 	listRespBody, err := utils.FlattenResponse(listResp)
 	if err != nil {
-		return fmt.Errorf("error flattening dashboards: %s", err)
+		return err
 	}
 
-	jsonPath := fmt.Sprintf("dashboards[?dashboard_id=='%s']|[0]", d.Id())
+	jsonPath := fmt.Sprintf("dashboards[?dashboard_id=='%s']|[0]", dashboardId)
 	dashboard := utils.PathSearch(jsonPath, listRespBody, nil)
 	if dashboard == nil {
-		return golangsdk.ErrDefault404{}
+		return golangsdk.ErrDefault404{
+			ErrUnexpectedResponseCode: golangsdk.ErrUnexpectedResponseCode{
+				Method:    "GET",
+				URL:       "/v2/{project_id}/aom/dashboards",
+				RequestId: "NONE",
+				Body:      []byte(fmt.Sprintf("the dashboard (%s) does not exist", dashboardId)),
+			},
+		}
 	}
 
 	return nil
@@ -268,7 +278,7 @@ func resourceDashboardUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
 		updateOpt := golangsdk.RequestOpts{
 			KeepResponseBody: true,
-			MoreHeaders:      buildHeaders(cfg, d),
+			MoreHeaders:      buildRequestMoreHeaders(cfg.GetEnterpriseProjectID(d)),
 			JSONBody:         buildUpdateDashboardBodyParams(d),
 		}
 
@@ -318,7 +328,7 @@ func resourceDashboardDelete(_ context.Context, d *schema.ResourceData, meta int
 
 	deleteOpt := golangsdk.RequestOpts{
 		KeepResponseBody: true,
-		MoreHeaders:      buildHeaders(cfg, d),
+		MoreHeaders:      buildRequestMoreHeaders(cfg.GetEnterpriseProjectID(d)),
 	}
 
 	_, err = client.Request("DELETE", deletePath, &deleteOpt)

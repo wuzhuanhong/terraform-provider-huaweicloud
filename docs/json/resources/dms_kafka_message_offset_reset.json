@@ -7,7 +7,7 @@
             "attributes": {
               "group": {
                 "type": "string",
-                "description": "Specifies the consumer group.",
+                "description": "The name of the consumer group.",
                 "required": true,
                 "forcenew": true
               },
@@ -17,36 +17,36 @@
               },
               "instance_id": {
                 "type": "string",
-                "description": "Specifies the instance ID.",
+                "description": "The ID of the Kafka instance.",
                 "required": true,
                 "forcenew": true
               },
               "message_offset": {
                 "type": "string",
-                "description": "Specifies the message offset.",
+                "description": "The offset to reset the consumption progress.",
                 "optional": true,
                 "forcenew": true
               },
               "partition": {
                 "type": "number",
-                "description": "Specifies the partition number.",
+                "description": "The partition number.",
                 "required": true,
                 "forcenew": true
               },
               "region": {
                 "type": "string",
-                "description": "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
+                "description": "The region where the consumption progress is to be reset is located.",
                 "computed": true
               },
               "timestamp": {
                 "type": "string",
-                "description": "Specifies the message offset. The value is a Unix timestamp, in millisecond",
+                "description": "The time to reset the consumption progress. The value is a Unix timestamp, in millisecond",
                 "optional": true,
                 "forcenew": true
               },
               "topic": {
                 "type": "string",
-                "description": "Specifies the topic name.",
+                "description": "The name of the topic.",
                 "optional": true,
                 "forcenew": true
               }

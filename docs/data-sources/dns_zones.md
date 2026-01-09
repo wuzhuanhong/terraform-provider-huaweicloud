@@ -25,9 +25,6 @@ data "huaweicloud_dns_zones" "test" {
 
 The following arguments are supported:
 
-* `region` - (Optional, String) Specifies the region in which to query the data source.
-  If omitted, the provider-level region will be used.
-
 * `zone_type` - (Required, String) Specifies the zone type. The value can be **public** or **private**.
 
 * `zone_id` - (Optional, String) Specifies the ID of the zone.
@@ -98,8 +95,6 @@ The `zones` block supports:
 * `status` - The zone status.
 
 * `record_num` - The number of record sets in the zone.
-
-* `masters` - The master DNS servers, from which the slave servers get DNS information.
 
 * `tags` - The key/value pairs to associate with the zone.
 

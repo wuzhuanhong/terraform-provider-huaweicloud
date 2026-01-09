@@ -41,6 +41,30 @@
                 "computed": true,
                 "forcenew": true
               },
+              "cluster": {
+                "type": [
+                  "list",
+                  [
+                    "object",
+                    {
+                      "brokers": [
+                        "list",
+                        [
+                          "object",
+                          {
+                            "broker_id": "string",
+                            "health": "bool",
+                            "host": "string",
+                            "port": "number"
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                ],
+                "description": "The cluster information of the DMS Kafka instance.",
+                "computed": true
+              },
               "connect_address": {
                 "type": "string",
                 "computed": true
@@ -60,6 +84,18 @@
               "description": {
                 "type": "string",
                 "optional": true
+              },
+              "disk_encrypted_enable": {
+                "type": "bool",
+                "description": "Whether to enable disk encryption.",
+                "optional": true,
+                "forcenew": true
+              },
+              "disk_encrypted_key": {
+                "type": "string",
+                "description": "The key ID of the disk encryption.",
+                "optional": true,
+                "forcenew": true
               },
               "dumping": {
                 "type": "bool",

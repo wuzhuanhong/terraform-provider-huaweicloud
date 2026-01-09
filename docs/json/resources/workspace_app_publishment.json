@@ -95,7 +95,7 @@
               },
               "work_path": {
                 "type": "string",
-                "description": "The publisher of the application.",
+                "description": "The working directory of the application.",
                 "optional": true
               }
             }

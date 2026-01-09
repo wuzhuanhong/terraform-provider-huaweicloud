@@ -36,11 +36,11 @@ const engineKafka = "kafka"
 
 // @API Kafka GET /v2/available-zones
 // @API Kafka POST /v2/{project_id}/instances/{instance_id}/crossvpc/modify
-// @API Kafka POST /v2/{project_id}/instances/{instance_id}/extend
+// @API Kafka POST /v2/{project_id}/kafka/instances/{instance_id}/extend
 // @API Kafka DELETE /v2/{project_id}/instances/{instance_id}
 // @API Kafka GET /v2/{project_id}/instances/{instance_id}
 // @API Kafka PUT /v2/{project_id}/instances/{instance_id}
-// @API Kafka POST /v2/{engine}/{project_id}/instances
+// @API Kafka POST /v2/{project_id}/kafka/instances
 // @API Kafka GET /v2/{project_id}/kafka/{instance_id}/tags
 // @API Kafka POST /v2/{project_id}/kafka/{instance_id}/tags/action
 // @API Kafka POST /v2/{project_id}/instances/{instance_id}/autotopic
@@ -51,6 +51,7 @@ const engineKafka = "kafka"
 // @API Kafka GET /v2/{project_id}/instances/{instance_id}/configs
 // @API Kafka POST /v2/{project_id}/instances/action
 // @API Kafka POST /v2/{project_id}/{engine}/instances/{instance_id}/plain-ssl-switch
+// @API Kafka GET /v2/{project_id}/instances/{instance_id}/manage/cluster
 // @API BSS GET /v2/orders/customer-orders/details/{order_id}
 // @API BSS POST /v2/orders/subscriptions/resources/autorenew/{instance_id}
 // @API BSS DELETE /v2/orders/subscriptions/resources/autorenew/{instance_id}
@@ -404,6 +405,20 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				},
 				Description: `The port protocol information of the Kafka instance.`,
 			},
+			"disk_encrypted_enable": {
+				Type:         schema.TypeBool,
+				Optional:     true,
+				ForceNew:     true,
+				RequiredWith: []string{"disk_encrypted_key"},
+				Description:  `Whether to enable disk encryption.`,
+			},
+			"disk_encrypted_key": {
+				Type:         schema.TypeString,
+				Optional:     true,
+				ForceNew:     true,
+				RequiredWith: []string{"disk_encrypted_enable"},
+				Description:  `The key ID of the disk encryption.`,
+			},
 			"charging_mode": common.SchemaChargingMode(nil),
 			"period_unit":   common.SchemaPeriodUnit(nil),
 			"period":        common.SchemaPeriod(nil),
@@ -515,10 +530,49 @@ func ResourceDmsKafkaInstance() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"cluster": {
+				Type:        schema.TypeList,
+				Computed:    true,
+				Description: `The cluster information of the DMS Kafka instance.`,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"brokers": {
+							Type:        schema.TypeList,
+							Computed:    true,
+							Description: `The list of broker nodes in the cluster.`,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"health": {
+										Type:        schema.TypeBool,
+										Computed:    true,
+										Description: `Whether the broker is healthy.`,
+									},
+									"host": {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: `The host address of the broker.`,
+									},
+									"port": {
+										Type:        schema.TypeInt,
+										Computed:    true,
+										Description: `The port of the broker.`,
+									},
+									"broker_id": {
+										Type:        schema.TypeString,
+										Computed:    true,
+										Description: `The ID of the broker.`,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			// Deprecated parameters.
 			"manager_user": {
 				Type:       schema.TypeString,
 				Optional:   true,
+				Computed:   true,
 				ForceNew:   true,
 				Deprecated: "Deprecated",
 			},
@@ -865,6 +919,8 @@ func createKafkaInstanceWithFlavor(ctx context.Context, d *schema.ResourceData, 
 		VpcClientPlain:        d.Get("vpc_client_plain").(bool),
 		PortProtocol:          buildKafkaPortProtocol(d.Get("port_protocol").([]interface{})),
 		TenantIps:             utils.ExpandToStringList(d.Get("new_tenant_ips").([]interface{})),
+		DiskEncryptedEnable:   d.Get("disk_encrypted_enable").(bool),
+		DiskEncryptedKey:      d.Get("disk_encrypted_key").(string),
 	}
 
 	if chargingMode, ok := d.GetOk("charging_mode"); ok && chargingMode == "prePaid" {
@@ -918,7 +974,7 @@ func createKafkaInstanceWithFlavor(ctx context.Context, d *schema.ResourceData, 
 	createOpts.Password = password
 	createOpts.KafkaManagerPassword = d.Get("manager_password").(string)
 
-	kafkaInstance, err := instances.CreateWithEngine(client, createOpts, engineKafka).Extract()
+	kafkaInstance, err := instances.CreateInstance(client, createOpts).Extract()
 	if err != nil {
 		return diag.Errorf("error creating Kafka instance: %s", err)
 	}
@@ -1017,6 +1073,8 @@ func createKafkaInstanceWithProductID(ctx context.Context, d *schema.ResourceDat
 		VpcClientPlain:        d.Get("vpc_client_plain").(bool),
 		PortProtocol:          buildKafkaPortProtocol(d.Get("port_protocol").([]interface{})),
 		TenantIps:             utils.ExpandToStringList(d.Get("new_tenant_ips").([]interface{})),
+		DiskEncryptedEnable:   d.Get("disk_encrypted_enable").(bool),
+		DiskEncryptedKey:      d.Get("disk_encrypted_key").(string),
 	}
 
 	if chargingMode, ok := d.GetOk("charging_mode"); ok && chargingMode == "prePaid" {
@@ -1062,7 +1120,7 @@ func createKafkaInstanceWithProductID(ctx context.Context, d *schema.ResourceDat
 	createOpts.Password = password
 	createOpts.KafkaManagerPassword = d.Get("manager_password").(string)
 
-	kafkaInstance, err := instances.CreateWithEngine(client, createOpts, engineKafka).Extract()
+	kafkaInstance, err := instances.CreateInstance(client, createOpts).Extract()
 	if err != nil {
 		return diag.Errorf("error creating DMS kafka instance: %s", err)
 	}
@@ -1353,6 +1411,8 @@ func resourceDmsKafkaInstanceRead(ctx context.Context, d *schema.ResourceData, m
 		d.Set("vpc_client_plain", v.VpcClientPlain),
 		d.Set("port_protocols", flattenKafkaSecurityConfig(v.PortProtocols)),
 		d.Set("port_protocol", flattenKafkaSecurityConfig(v.PortProtocols)),
+		d.Set("disk_encrypted_enable", v.DiskEncrypted),
+		d.Set("disk_encrypted_key", v.DiskEncryptedKey),
 		// Attributes.
 		d.Set("engine", v.Engine),
 		d.Set("partition_num", partitionNum),
@@ -1380,6 +1440,7 @@ func resourceDmsKafkaInstanceRead(ctx context.Context, d *schema.ResourceData, m
 		d.Set("public_bandwidth", v.PublicBandWidth),
 		d.Set("ssl_two_way_enable", v.SslTwoWayEnable),
 		d.Set("type", v.Type),
+		setKafkaInstanceCluster(client, d),
 	)
 
 	// set tags
@@ -1398,6 +1459,57 @@ func resourceDmsKafkaInstanceRead(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	return setKafkaInstanceParameters(ctx, d, client)
+}
+
+func setKafkaInstanceCluster(client *golangsdk.ServiceClient, d *schema.ResourceData) error {
+	clusterHttpUrl := "v2/{project_id}/instances/{instance_id}/manage/cluster"
+	clusterPath := client.Endpoint + clusterHttpUrl
+	clusterPath = strings.ReplaceAll(clusterPath, "{project_id}", client.ProjectID)
+	clusterPath = strings.ReplaceAll(clusterPath, "{instance_id}", d.Id())
+
+	clusterOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders: map[string]string{
+			"Content-Type": "application/json",
+		},
+	}
+	clusterResp, err := client.Request("GET", clusterPath, &clusterOpt)
+	if err != nil {
+		log.Printf("[WARN] error getting cluster info of Kafka instance (%s): %s", d.Id(), err)
+		return nil
+	}
+
+	respBody, err := utils.FlattenResponse(clusterResp)
+	if err != nil {
+		log.Printf("[WARN] error flattenning get cluster info response of Kafka instance (%s): %s", d.Id(), err)
+		return nil
+	}
+
+	clusterBody := utils.PathSearch("cluster", respBody, nil)
+	if clusterBody == nil {
+		return nil
+	}
+
+	brokersRaw := utils.PathSearch("brokers", clusterBody, make([]interface{}, 0))
+	var brokers []map[string]interface{}
+	if brokersList, ok := brokersRaw.([]interface{}); ok {
+		for _, broker := range brokersList {
+			if brokerMap, ok := broker.(map[string]interface{}); ok {
+				brokers = append(brokers, map[string]interface{}{
+					"health":    utils.PathSearch("health", brokerMap, nil),
+					"host":      utils.PathSearch("host", brokerMap, nil),
+					"port":      utils.PathSearch("port", brokerMap, nil),
+					"broker_id": utils.PathSearch("broker_id", brokerMap, nil),
+				})
+			}
+		}
+	}
+	clusterResult := []map[string]interface{}{
+		{
+			"brokers": brokers,
+		},
+	}
+	return d.Set("cluster", clusterResult)
 }
 
 func getPublicIPAddresses(rawParam string) []string {
@@ -1728,7 +1840,21 @@ func resizeKafkaInstance(ctx context.Context, d *schema.ResourceData, meta inter
 		}
 	}
 
+	// `storage_space` equals `broker_num` multiplied by the storage space of each broker.
+	// The `storage_space` value is related to the `broker_num` value.
+	// After broker_num changes, we need to obtain the latest storage_space and compare it with the current storage_space.
 	if d.HasChanges("storage_space") {
+		resp, err := instances.Get(client, d.Id()).Extract()
+		if err != nil {
+			return fmt.Errorf("error getting Kafka instance: %s", err)
+		}
+
+		newStorageSpace := d.Get("storage_space").(int)
+		if resp.TotalStorageSpace >= newStorageSpace {
+			log.Printf("[WARN] The new storage space is less than or equal to the current storage space, no need to resize")
+			return nil
+		}
+
 		if err = resizeKafkaInstanceStorage(ctx, d, client); err != nil {
 			return err
 		}
@@ -1751,7 +1877,7 @@ func resizeKafkaInstanceStorage(ctx context.Context, d *schema.ResourceData, cli
 
 func doKafkaInstanceResize(ctx context.Context, d *schema.ResourceData, client *golangsdk.ServiceClient, opts instances.ResizeInstanceOpts) error {
 	retryFunc := func() (interface{}, bool, error) {
-		_, err := instances.Resize(client, d.Id(), opts)
+		_, err := instances.ExtendInstance(client, d.Id(), opts)
 		retry, err := handleMultiOperationsError(err)
 		return nil, retry, err
 	}

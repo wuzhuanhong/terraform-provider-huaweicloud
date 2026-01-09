@@ -9,17 +9,19 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
 )
 
-func TestAccAppServerAction_changeImage(t *testing.T) {
+func TestAccAppServerAction_basic(t *testing.T) {
 	var (
-		resourceName = "huaweicloud_workspace_app_server_action.test"
-		name         = acceptance.RandomAccResourceName()
+		name = acceptance.RandomAccResourceName()
+
+		changeImageRName = "huaweicloud_workspace_app_server_action.changeImage"
+		reinstallRName   = "huaweicloud_workspace_app_server_action.reinstall"
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckWorkspaceAppServerGroupId(t)
-			acceptance.TestAccPreCheckWorkspaceAppServerImageInfo(t)
+			acceptance.TestAccPreCheckWorkspaceAppServerImageId(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		// This resource is a one-time action resource and there is no logic in the delete method.
@@ -29,7 +31,13 @@ func TestAccAppServerAction_changeImage(t *testing.T) {
 			{
 				Config: testAccAppServerAction_changeImage(name),
 				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "type", "change-image"),
+					resource.TestCheckResourceAttr(changeImageRName, "type", "change-image"),
+				),
+			},
+			{
+				Config: testAccAppServerAction_reinstall(name),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr(reinstallRName, "type", "reinstall"),
 				),
 			},
 		},
@@ -75,59 +83,33 @@ func testAccAppServerAction_changeImage(name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_workspace_app_server_action" "test" {
+variable "image_product_id" {
+  default = "%[2]s"
+}
+
+resource "huaweicloud_workspace_app_server_action" "changeImage" {
   type      = "change-image"
   server_id = huaweicloud_workspace_app_server.test.id
   content   = jsonencode({
-    image_id            = "%[2]s"
-    image_type          = "gold"
+    image_id            = "%[3]s"
     os_type             = "Windows"
-	image_product_id    = "%[3]s"
+    image_type          = var.image_product_id != "" ? "gold" : null
+	image_product_id    = var.image_product_id != "" ? var.image_product_id : null
     update_access_agent = true
   })
 
   max_retries = 3
-
-  provisioner "local-exec" {
-    command = "sleep 600"
-  }
 }
 `, testAccAppServerAction_base(name),
-		acceptance.HW_WORKSPACE_APP_SERVER_GROUP_IMAGE_ID,
-		acceptance.HW_WORKSPACE_APP_SERVER_GROUP_IMAGE_PRODUCT_ID)
-}
-
-func TestAccAppServerAction_reinstall(t *testing.T) {
-	var (
-		resourceName = "huaweicloud_workspace_app_server_action.test"
-		name         = acceptance.RandomAccResourceName()
-	)
-
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckWorkspaceAppServerGroupId(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		// This resource is a one-time action resource and there is no logic in the delete method.
-		// lintignore:AT001
-		CheckDestroy: nil,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccAppServerAction_reinstall(name),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr(resourceName, "type", "reinstall"),
-				),
-			},
-		},
-	})
+		acceptance.HW_WORKSPACE_APP_SERVER_GROUP_IMAGE_PRODUCT_ID,
+		acceptance.HW_WORKSPACE_APP_SERVER_GROUP_IMAGE_ID)
 }
 
 func testAccAppServerAction_reinstall(name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-resource "huaweicloud_workspace_app_server_action" "test" {
+resource "huaweicloud_workspace_app_server_action" "reinstall" {
   type      = "reinstall"
   server_id = huaweicloud_workspace_app_server.test.id
   content   = jsonencode({
@@ -135,10 +117,6 @@ resource "huaweicloud_workspace_app_server_action" "test" {
   })
 
   max_retries = 3
-
-  provisioner "local-exec" {
-    command = "sleep 1200"
-  }
 }
 `, testAccAppServerAction_base(name))
 }

@@ -5,20 +5,48 @@
         "huaweicloud_secmaster_dataspace": {
           "block": {
             "attributes": {
+              "create_by": {
+                "type": "string",
+                "computed": true
+              },
+              "create_time": {
+                "type": "number",
+                "computed": true
+              },
               "dataspace_name": {
                 "type": "string",
                 "required": true
+              },
+              "dataspace_type": {
+                "type": "string",
+                "computed": true
               },
               "description": {
                 "type": "string",
                 "required": true
               },
+              "domain_id": {
+                "type": "string",
+                "computed": true
+              },
               "id": {
+                "type": "string",
+                "computed": true
+              },
+              "project_id": {
                 "type": "string",
                 "computed": true
               },
               "region": {
                 "type": "string",
+                "computed": true
+              },
+              "update_by": {
+                "type": "string",
+                "computed": true
+              },
+              "update_time": {
+                "type": "number",
                 "computed": true
               },
               "workspace_id": {

@@ -105,7 +105,7 @@ The following arguments are supported:
     `terraform apply`. If it is inconsistent with the script configuration, it can be ignored by `ignore_changes`
     in non-change scenarios.
 
-* `product_id` - (Required, String, NonUpdatable) Specifies the specification ID of the desktop pool.
+* `product_id` - (Required, String) Specifies the specification ID of the desktop pool.
 
 * `image_type` - (Required, String, NonUpdatable) Specifies the image type of the desktop pool.  
   The valid values are as follows:
@@ -115,7 +115,7 @@ The following arguments are supported:
 * `image_id` - (Required, String, NonUpdatable) Specifies the image ID of the desktop pool.
 
 * `root_volume` - (Required, List, NonUpdatable) Specifies the system volume configuration of the desktop pool.  
-  The [root_volume](#desktop_pool_volume) structure is documented below.
+  The [root_volume](#desktop_pool_root_volume) structure is documented below.
 
 * `subnet_ids` - (Required, List, NonUpdatable) Specifies the list of the subnet IDs to which the desktop pool belongs.
 
@@ -125,11 +125,20 @@ The following arguments are supported:
   desktop pool belongs.  
   The [security_groups](#desktop_pool_security_groups) structure is documented below.
 
-* `data_volumes` - (Optional, List, NonUpdatable) Specifies the list of the data volume configurations of
+* `data_volumes` - (Optional, List) Specifies the list of the data volume configurations of
   the desktop pool.  
-  The [data_volumes](#desktop_pool_volume) structure is documented below.
-  
-* `authorized_objects` - (Optional, List, NonUpdatable) Specifies the list of the users or user groups
+  The [data_volumes](#desktop_pool_data_volumes) structure is documented below.
+
+  ~> 1. Updating this parameter only adds or deletes disks, it does not expand the disk's capacity. If you modify
+     an existing disk, the old disk will be deleted first before being added.
+     <br/>2. When multiple disks of the same type and size exist, if you delete disks, they will be deleted
+     according to the order in the script. There is no guarantee that the disk you want to delete will be
+     the one you delete. Please delete them using other methods.
+
+  -> 1. Currently, only one disk can be deleted or added at a time during the update phase.
+     <br/>2. Before adding the disks, please ensure that all desktops in the desktop pool are running.
+
+* `authorized_objects` - (Optional, List) Specifies the list of the users or user groups
   to be authorized.  
   The [authorized_objects](#desktop_pool_authorized_objects) structure is documented below.
 
@@ -163,8 +172,8 @@ The following arguments are supported:
 * `in_maintenance_mode` - (Optional, Bool) Specifies whether to enable maintenance mode of the desktop pool.  
   Defaults to **false**.
 
-<a name="desktop_pool_volume"></a>
-The `root_volume` block supports:
+<a name="desktop_pool_data_volumes"></a>
+The `data_volumes` block supports:
 
 * `type` - (Required, String) Specifies the type of the volume.  
   The valid values are as follows:
@@ -172,6 +181,18 @@ The `root_volume` block supports:
   + **SSD**: Ultra-high I/O disk type.
 
 * `size` - (Required, Int) Specifies the size of the volume, in GB.
+  + For root volume, the valid value ranges from `80` to `1,020`.
+  + For data volume, the valid value ranges from `10` to `8,200`.
+
+<a name="desktop_pool_root_volume"></a>
+The `root_volume` block supports:
+
+* `type` - (Required, String, NonUpdatable) Specifies the type of the volume.  
+  The valid values are as follows:
+  + **SAS**: High I/O disk type.
+  + **SSD**: Ultra-high I/O disk type.
+
+* `size` - (Required, Int, NonUpdatable) Specifies the size of the volume, in GB.
   + For root volume, the valid value ranges from `80` to `1,020`.
   + For data volume, the valid value ranges from `10` to `8,200`.
 
@@ -208,9 +229,6 @@ The `autoscale_policy` block supports:
 * `min_idle` - (Optional, Int) Specifies the desktops will be automatically created when the number of idle desktops is
   less than this value.  
   The valid value ranges from `1` to `1,000`.
-
-* `once_auto_created` - (Optional, Int) Specifies the number of desktops automatically created at one time.  
-  The valid value ranges from `1` to `100`.
 
 <a name="desktop_pool_security_groups"></a>
 The `security_groups` block supports:
@@ -278,6 +296,7 @@ The `product` block supports:
 This resource provides the following timeouts configuration options:
 
 * `create` - Default is 20 minutes.
+* `update` - Default is 20 minutes.
 * `delete` - Default is 20 minutes.
 
 ## Import

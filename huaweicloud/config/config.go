@@ -114,6 +114,7 @@ type Config struct {
 	// SigningAlgorithm is used to select encryption algorithm
 	SigningAlgorithm string
 	DefaultTags      map[string]interface{}
+	IgnoreTags       []interface{}
 }
 
 type AssumeRole struct {
@@ -692,6 +693,10 @@ func (c *Config) GetForceNew(d *schema.ResourceDiff) bool {
 // ********** client for Global Service **********
 func (c *Config) IAMV3Client(region string) (*golangsdk.ServiceClient, error) {
 	return c.NewServiceClient("iam", region)
+}
+
+func (c *Config) IAMV3GlobalClient() (*golangsdk.ServiceClient, error) {
+	return c.NewServiceClient("iam_global", "")
 }
 
 func (c *Config) IdentityV3Client(region string) (*golangsdk.ServiceClient, error) {

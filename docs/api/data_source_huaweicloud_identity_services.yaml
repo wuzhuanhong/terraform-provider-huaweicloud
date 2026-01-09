@@ -1,0 +1,16 @@
+info:
+    version: ""
+    title: data_source_huaweicloud_identity_services
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: IAM
+paths:
+    /v3/services:
+        GET:
+            tag: IAM
+    /v3/services/{service_id}:
+        GET:
+            tag: IAM

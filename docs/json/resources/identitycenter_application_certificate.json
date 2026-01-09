@@ -1,0 +1,51 @@
+{
+  "provider_schemas": {
+    "huaweicloud/huaweicloud": {
+      "resource_schemas": {
+        "huaweicloud_identitycenter_application_certificate": {
+          "block": {
+            "attributes": {
+              "algorithm": {
+                "type": "string",
+                "computed": true
+              },
+              "application_instance_id": {
+                "type": "string",
+                "required": true
+              },
+              "certificate": {
+                "type": "string",
+                "computed": true
+              },
+              "expiry_date": {
+                "type": "string",
+                "computed": true
+              },
+              "id": {
+                "type": "string",
+                "computed": true
+              },
+              "instance_id": {
+                "type": "string",
+                "required": true
+              },
+              "issue_date": {
+                "type": "string",
+                "computed": true
+              },
+              "key_size": {
+                "type": "string",
+                "computed": true
+              },
+              "status": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -100,6 +100,14 @@ var allServiceCatalog = map[string]ServiceCatalog{
 		WithOutProjectID: true,
 		Product:          "IAM",
 	},
+	"iam_global": {
+		Name:             "iam",
+		Version:          "v3.0",
+		Scope:            "global",
+		Admin:            true,
+		WithOutProjectID: true,
+		Product:          "IAM",
+	},
 	"sts": {
 		Name:             "sts",
 		Version:          "",
@@ -287,6 +295,11 @@ var allServiceCatalog = map[string]ServiceCatalog{
 		Name:    "evs",
 		Version: "v5",
 		Product: "EVS",
+	},
+	"esw": {
+		Name:    "esw",
+		Version: "v3",
+		Product: "ESW",
 	},
 	"sfs": {
 		Name:    "sfs",
