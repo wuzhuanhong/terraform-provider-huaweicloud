@@ -195,6 +195,11 @@
                 "required": true,
                 "forcenew": true
               },
+              "switch_option": {
+                "type": "string",
+                "optional": true,
+                "computed": true
+              },
               "tags": {
                 "type": [
                   "map",
@@ -284,6 +289,13 @@
               "flavor": {
                 "block": {
                   "attributes": {
+                    "node_list": {
+                      "type": [
+                        "list",
+                        "string"
+                      ],
+                      "optional": true
+                    },
                     "num": {
                       "type": "number",
                       "required": true
@@ -311,6 +323,27 @@
                 "nesting_mode": "list",
                 "forcenew": true,
                 "min_items": 1
+              },
+              "policy": {
+                "block": {
+                  "attributes": {
+                    "size": {
+                      "type": "number",
+                      "optional": true,
+                      "computed": true
+                    },
+                    "step": {
+                      "type": "number",
+                      "required": true
+                    },
+                    "threshold": {
+                      "type": "number",
+                      "required": true
+                    }
+                  }
+                },
+                "nesting_mode": "list",
+                "max_items": 1
               }
             }
           },

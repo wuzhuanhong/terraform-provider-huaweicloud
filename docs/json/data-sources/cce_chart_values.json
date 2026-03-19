@@ -7,7 +7,6 @@
             "attributes": {
               "chart_id": {
                 "type": "string",
-                "description": "Specifies the chart template id in which to query the resource.",
                 "required": true
               },
               "id": {
@@ -16,12 +15,13 @@
               },
               "region": {
                 "type": "string",
-                "description": "Specifies the region in which to query the resource. If omitted, the provider-level region will be used.",
                 "computed": true
               },
               "values": {
-                "type": "string",
-                "description": "The values of the chart template.",
+                "type": [
+                  "map",
+                  "string"
+                ],
                 "computed": true
               }
             }

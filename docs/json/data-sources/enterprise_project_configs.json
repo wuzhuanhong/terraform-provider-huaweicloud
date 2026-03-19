@@ -9,11 +9,17 @@
                 "type": "string",
                 "computed": true
               },
-              "support_item": {
+              "support_item_attribute": {
                 "type": [
-                  "map",
-                  "bool"
+                  "list",
+                  [
+                    "object",
+                    {
+                      "delete_ep_support_attribute": "bool"
+                    }
+                  ]
                 ],
+                "description": "The list of configurations.",
                 "computed": true
               }
             }

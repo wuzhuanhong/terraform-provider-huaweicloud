@@ -138,7 +138,7 @@ func TestAccDDSV3Instance_withEpsId(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckEpsID(t)
+			acceptance.TestAccPreCheckMigrateEpsID(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		CheckDestroy:      rc.CheckResourceDestroy(),
@@ -148,7 +148,7 @@ func TestAccDDSV3Instance_withEpsId(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
-					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", "0"),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
 				),
 			},
 			{
@@ -156,7 +156,7 @@ func TestAccDDSV3Instance_withEpsId(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
-					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
+					resource.TestCheckResourceAttr(resourceName, "enterprise_project_id", acceptance.HW_ENTERPRISE_MIGRATE_PROJECT_ID_TEST),
 				),
 			},
 		},
@@ -377,6 +377,69 @@ func TestAccDDSV3Instance_updateAZ(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", rName),
 					resource.TestCheckResourceAttrPair(resourceName, "availability_zone", "data.huaweicloud_availability_zones.test", "names.1"),
 				),
+			},
+		},
+	})
+}
+
+func TestAccDDSV3Instance_withAutoEnlargePolicy(t *testing.T) {
+	var instance instances.InstanceResponse
+	rName := acceptance.RandomAccResourceName()
+	resourceName := "huaweicloud_dds_instance.test"
+
+	rc := acceptance.InitResourceCheck(
+		resourceName,
+		&instance,
+		getDdsResourceFunc,
+	)
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {
+			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
+		},
+		ProviderFactories: acceptance.TestAccProviderFactories,
+		CheckDestroy:      rc.CheckResourceDestroy(),
+		Steps: []resource.TestStep{
+			{
+				Config: testAccSettingAutoEnlargePolicy_basic(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "name", rName),
+					resource.TestCheckResourceAttr(resourceName, "switch_option", "on"),
+					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.threshold", "80"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.step", "10"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.size", "50"),
+					testAccCheckDDSV3InstanceFlavor(&instance, "replica", "num", 5),
+				),
+			},
+			{
+				Config: testAccSettingAutoEnlargePolicy_update(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "switch_option", "off"),
+					resource.TestCheckResourceAttr(resourceName, "policy.#", "1"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.threshold", "90"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.step", "15"),
+					resource.TestCheckResourceAttr(resourceName, "policy.0.size", "500"),
+					testAccCheckDDSV3InstanceFlavor(&instance, "replica", "num", 5),
+				),
+			},
+			{
+				Config: testAccInstanceNodeDelete_basic(rName),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					testAccCheckDDSV3InstanceFlavor(&instance, "replica", "num", 3),
+				),
+			},
+			{
+				ResourceName:      resourceName,
+				ImportState:       true,
+				ImportStateVerify: true,
+				ImportStateVerifyIgnore: []string{
+					"availability_zone", "flavor", "password", "groups", "nodes",
+				},
 			},
 		},
 	})
@@ -766,7 +829,7 @@ resource "huaweicloud_dds_instance" "instance" {
     foo   = "bar"
     owner = "terraform"
   }
-}`, common.TestBaseNetwork(rName), rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}`, common.TestBaseNetwork(rName), rName, acceptance.HW_ENTERPRISE_MIGRATE_PROJECT_ID_TEST)
 }
 
 func testAccDDSInstanceV3Config_baseEpsId(rName string) string {
@@ -783,7 +846,7 @@ resource "huaweicloud_dds_instance" "instance" {
   security_group_id     = huaweicloud_networking_secgroup.test.id
   password              = "Terraform@123"
   mode                  = "Sharding"
-  enterprise_project_id = "0"
+  enterprise_project_id = "%s"
 
   datastore {
     type           = "DDS-Community"
@@ -821,7 +884,7 @@ resource "huaweicloud_dds_instance" "instance" {
     foo   = "bar"
     owner = "terraform"
   }
-}`, common.TestBaseNetwork(rName), rName)
+}`, common.TestBaseNetwork(rName), rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
 }
 
 func testAccDDSInstanceV3Config_prePaid(rName string) string {
@@ -1315,4 +1378,124 @@ resource "huaweicloud_dds_instance" "instance" {
     spec_code = "dds.mongodb.s6.large.2.repset"
   }
 }`, common.TestBaseNetwork(rName), templateRreplica1, rName)
+}
+
+func testAccSettingAutoEnlargePolicy_basic(rName string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+data "huaweicloud_availability_zones" "test" {}
+
+resource "huaweicloud_dds_instance" "test" {
+  name                  = "%[2]s"
+  availability_zone     = data.huaweicloud_availability_zones.test.names[0]
+  vpc_id                = huaweicloud_vpc.test.id
+  subnet_id             = huaweicloud_vpc_subnet.test.id
+  security_group_id     = huaweicloud_networking_secgroup.test.id
+  password              = "Terraform@123"
+  mode                  = "ReplicaSet"
+  enterprise_project_id = "%[3]s"
+
+  datastore {
+    type           = "DDS-Community"
+    version        = "4.0"
+    storage_engine = "wiredTiger"
+  }
+
+  flavor {
+    type      = "replica"
+    storage   = "ULTRAHIGH"
+    num       = 5
+    size      = 10
+    spec_code = "dds.mongodb.s6.large.2.repset"
+  }
+
+  switch_option = "on"
+
+  policy {
+    threshold = 80
+    step      = 10
+    size      = 50
+  }
+}`, common.TestBaseNetwork(rName), rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccSettingAutoEnlargePolicy_update(rName string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+data "huaweicloud_availability_zones" "test" {}
+
+resource "huaweicloud_dds_instance" "test" {
+  name                  = "%[2]s"
+  availability_zone     = data.huaweicloud_availability_zones.test.names[0]
+  vpc_id                = huaweicloud_vpc.test.id
+  subnet_id             = huaweicloud_vpc_subnet.test.id
+  security_group_id     = huaweicloud_networking_secgroup.test.id
+  password              = "Terraform@123"
+  mode                  = "ReplicaSet"
+  enterprise_project_id = "%[3]s"
+
+  datastore {
+    type           = "DDS-Community"
+    version        = "4.0"
+    storage_engine = "wiredTiger"
+  }
+
+  flavor {
+    type      = "replica"
+    storage   = "ULTRAHIGH"
+    num       = 5
+    size      = 10
+    spec_code = "dds.mongodb.s6.large.2.repset"
+  }
+
+  switch_option = "off"
+
+  policy {
+    threshold = 90
+    step      = 15
+    size      = 500
+  }
+}`, common.TestBaseNetwork(rName), rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
+}
+
+func testAccInstanceNodeDelete_basic(rName string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+data "huaweicloud_availability_zones" "test" {}
+
+resource "huaweicloud_dds_instance" "test" {
+  name                  = "%[2]s"
+  availability_zone     = data.huaweicloud_availability_zones.test.names[0]
+  vpc_id                = huaweicloud_vpc.test.id
+  subnet_id             = huaweicloud_vpc_subnet.test.id
+  security_group_id     = huaweicloud_networking_secgroup.test.id
+  password              = "Terraform@123"
+  mode                  = "ReplicaSet"
+  enterprise_project_id = "%[3]s"
+
+  datastore {
+    type           = "DDS-Community"
+    version        = "4.0"
+    storage_engine = "wiredTiger"
+  }
+
+  flavor {
+    type      = "replica"
+    storage   = "ULTRAHIGH"
+    num       = 3
+    size      = 10
+    spec_code = "dds.mongodb.s6.large.2.repset"
+  }
+
+  switch_option = "off"
+
+  policy {
+    threshold = 90
+    step      = 15
+    size      = 500
+  }
+}`, common.TestBaseNetwork(rName), rName, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST)
 }

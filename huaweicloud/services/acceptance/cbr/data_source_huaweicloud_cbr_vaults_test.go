@@ -49,6 +49,7 @@ func TestAccDataVaults_backupServer(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
@@ -64,8 +65,8 @@ func TestAccDataVaults_backupServer(t *testing.T) {
 					resource.TestCheckResourceAttr(byName, "vaults.0.type", cbr.VaultTypeServer),
 					resource.TestCheckResourceAttr(byName, "vaults.0.protection_type", "backup"),
 					resource.TestCheckResourceAttr(byName, "vaults.0.size", "200"),
-					resource.TestCheckResourceAttr(byName, "vaults.0.resources.#", "1"),
-					resource.TestCheckResourceAttr(byName, "vaults.0.enterprise_project_id", "0"),
+					resource.TestCheckResourceAttr(byName, "vaults.0.resources.#", "2"),
+					resource.TestCheckResourceAttr(byName, "vaults.0.enterprise_project_id", acceptance.HW_ENTERPRISE_PROJECT_ID_TEST),
 					resource.TestCheckResourceAttr(byName, "vaults.0.tags.foo", "bar"),
 					resource.TestCheckResourceAttr(byName, "vaults.0.tags.key", "value"),
 					resource.TestCheckResourceAttr(byName, "vaults.0.auto_bind", "true"),
@@ -113,7 +114,7 @@ resource "huaweicloud_cbr_vault" "test" {
   consistent_level      = "crash_consistent"
   protection_type       = "backup"
   size                  = 200
-  enterprise_project_id = "0"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
   backup_name_prefix    = "test-prefix-"
   is_multi_az           = true
   auto_bind             = true
@@ -123,8 +124,16 @@ resource "huaweicloud_cbr_vault" "test" {
   }
 
   resources {
-    server_id = huaweicloud_compute_instance.test.id
-    excludes  = slice(huaweicloud_compute_volume_attach.test[*].volume_id, 0, 2)
+    server_id = huaweicloud_compute_instance.test[0].id
+    excludes  = [
+      huaweicloud_evs_volume.test[2].id,
+    ]
+  }
+  resources {
+    server_id = huaweicloud_compute_instance.test[1].id
+    excludes  = [
+      huaweicloud_evs_volume.test[3].id,
+    ]
   }
 
   policy {
@@ -136,7 +145,7 @@ resource "huaweicloud_cbr_vault" "test" {
     key = "value"
   }
 }
-`, testAccVault_base(name), name)
+`, testAccVault_backupServer_base(name), name)
 }
 
 func testAccDataVaults_basic(name string) string {
@@ -349,6 +358,7 @@ func TestAccDataVaults_replicationServer(t *testing.T) {
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
@@ -394,13 +404,14 @@ func TestAccDataVaults_volume(t *testing.T) {
 	var (
 		name           = acceptance.RandomAccResourceNameWithDash()
 		dataSourceName = "data.huaweicloud_cbr_vaults.filter_by_type"
-		config         = testAccVault_volume_step1(testAccVault_base(name), name)
+		config         = testAccVault_volume_step1(testAccVault_volume_base(name), name)
 		dc             = acceptance.InitDataSourceCheck(dataSourceName)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
+			acceptance.TestAccPreCheckEpsID(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{

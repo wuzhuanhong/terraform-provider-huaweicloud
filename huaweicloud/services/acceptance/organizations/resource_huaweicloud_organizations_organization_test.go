@@ -7,49 +7,25 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/organizations"
 )
 
 func resourceOrganizationRead(cfg *config.Config, _ *terraform.ResourceState) (interface{}, error) {
-	// getOrganization: Query Organizations organization
-	var (
-		region                 = acceptance.HW_REGION_NAME
-		getOrganizationHttpUrl = "v1/organizations"
-		getOrganizationProduct = "organizations"
-	)
-	getOrganizationClient, err := cfg.NewServiceClient(getOrganizationProduct, region)
+	client, err := cfg.NewServiceClient("organizations", acceptance.HW_REGION_NAME)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Organizations Client: %s", err)
+		return nil, fmt.Errorf("error creating Organizations client: %s", err)
 	}
 
-	getOrganizationPath := getOrganizationClient.Endpoint + getOrganizationHttpUrl
-
-	getOrganizationOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
-	}
-	getOrganizationResp, err := getOrganizationClient.Request("GET", getOrganizationPath, &getOrganizationOpt)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving Organizations organization: %s", err)
-	}
-	return utils.FlattenResponse(getOrganizationResp)
+	return organizations.GetOrganization(client)
 }
 
 func TestAccOrganization_basic(t *testing.T) {
-	var obj interface{}
-
-	rName := "huaweicloud_organizations_organization.test"
-
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&obj,
-		resourceOrganizationRead,
+	var (
+		obj   interface{}
+		rName = "huaweicloud_organizations_organization.test"
+		rc    = acceptance.InitResourceCheck(rName, &obj, resourceOrganizationRead)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -61,12 +37,13 @@ func TestAccOrganization_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testOrganization_basic(),
+				Config: testAccOrganization_basic_step1,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(rName, "root_tags.key1", "value1"),
-					resource.TestCheckResourceAttr(rName, "root_tags.key2", "value2"),
 					resource.TestCheckResourceAttr(rName, "enabled_policy_types.0", "service_control_policy"),
+					resource.TestCheckResourceAttr(rName, "root_tags.%", "2"),
+					resource.TestCheckResourceAttr(rName, "root_tags.foo", "bar"),
+					resource.TestCheckResourceAttr(rName, "root_tags.owner", "terraform"),
 					resource.TestCheckResourceAttrSet(rName, "urn"),
 					resource.TestCheckResourceAttrSet(rName, "master_account_id"),
 					resource.TestCheckResourceAttrSet(rName, "master_account_name"),
@@ -77,12 +54,12 @@ func TestAccOrganization_basic(t *testing.T) {
 				),
 			},
 			{
-				Config: testOrganization_basic_update(),
+				Config: testAccOrganization_basic_step2,
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(rName, "root_tags.key3", "value3"),
-					resource.TestCheckResourceAttr(rName, "root_tags.key4", "value4"),
 					resource.TestCheckResourceAttr(rName, "enabled_policy_types.0", "tag_policy"),
+					resource.TestCheckResourceAttr(rName, "root_tags.%", "1"),
+					resource.TestCheckResourceAttr(rName, "root_tags.owner", "terraform_update"),
 				),
 			},
 			{
@@ -94,28 +71,23 @@ func TestAccOrganization_basic(t *testing.T) {
 	})
 }
 
-func testOrganization_basic() string {
-	return `
+const testAccOrganization_basic_step1 = `
 resource "huaweicloud_organizations_organization" "test" {
   enabled_policy_types = ["service_control_policy"]
 
   root_tags = {
-    "key1" = "value1"
-    "key2" = "value2"
+    foo   = "bar"
+    owner = "terraform"
   }
 }
 `
-}
 
-func testOrganization_basic_update() string {
-	return `
+const testAccOrganization_basic_step2 = `
 resource "huaweicloud_organizations_organization" "test" {
   enabled_policy_types = ["tag_policy"]
 
   root_tags = {
-    "key3" = "value3"
-    "key4" = "value4"
+    owner = "terraform_update"
   }
 }
 `
-}

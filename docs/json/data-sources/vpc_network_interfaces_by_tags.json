@@ -31,6 +31,10 @@
                   ]
                 ],
                 "computed": true
+              },
+              "total_count": {
+                "type": "number",
+                "computed": true
               }
             },
             "block_types": {

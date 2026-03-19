@@ -2,60 +2,33 @@ package organizations
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/organizations"
 )
 
 func getOrganizationalUnitResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	// getOrganizationalUnit: Query Organizations organizational unit
-	var (
-		region                       = acceptance.HW_REGION_NAME
-		getOrganizationalUnitHttpUrl = "v1/organizations/organizational-units/{organizational_unit_id}"
-		getOrganizationalUnitProduct = "organizations"
-	)
-	getOrganizationalUnitClient, err := cfg.NewServiceClient(getOrganizationalUnitProduct, region)
+	client, err := cfg.NewServiceClient("organizations", acceptance.HW_REGION_NAME)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Organizations Client: %s", err)
+		return nil, fmt.Errorf("error creating Organizations client: %s", err)
 	}
 
-	getOrganizationalUnitPath := getOrganizationalUnitClient.Endpoint + getOrganizationalUnitHttpUrl
-	getOrganizationalUnitPath = strings.ReplaceAll(getOrganizationalUnitPath, "{organizational_unit_id}",
-		state.Primary.ID)
-
-	getOrganizationalUnitOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-		OkCodes: []int{
-			200,
-		},
-	}
-	getOrganizationalUnitResp, err := getOrganizationalUnitClient.Request("GET",
-		getOrganizationalUnitPath, &getOrganizationalUnitOpt)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving Organizations organizational unit: %s", err)
-	}
-	return utils.FlattenResponse(getOrganizationalUnitResp)
+	return organizations.GetOrganizationalUnit(client, state.Primary.ID)
 }
 
 func TestAccOrganizationalUnit_basic(t *testing.T) {
-	var obj interface{}
+	var (
+		name       = acceptance.RandomAccResourceName()
+		updateName = acceptance.RandomAccResourceName()
 
-	name := acceptance.RandomAccResourceName()
-	updateName := acceptance.RandomAccResourceName()
-	rName := "huaweicloud_organizations_organizational_unit.test"
-
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&obj,
-		getOrganizationalUnitResourceFunc,
+		obj   interface{}
+		rName = "huaweicloud_organizations_organizational_unit.test"
+		rc    = acceptance.InitResourceCheck(rName, &obj, getOrganizationalUnitResourceFunc)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -68,23 +41,24 @@ func TestAccOrganizationalUnit_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testOrganizationalUnit_basic(name),
+				Config: testAccOrganizationalUnit_basic_step1(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", name),
-					resource.TestCheckResourceAttr(rName, "tags.key1", "value1"),
-					resource.TestCheckResourceAttr(rName, "tags.key2", "value2"),
+					resource.TestCheckResourceAttr(rName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(rName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttr(rName, "tags.owner", "terraform"),
 					resource.TestCheckResourceAttrSet(rName, "urn"),
 					resource.TestCheckResourceAttrSet(rName, "created_at"),
 				),
 			},
 			{
-				Config: testOrganizationalUnit_basic_update(updateName),
+				Config: testAccOrganizationalUnit_basic_step2(updateName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", updateName),
-					resource.TestCheckResourceAttr(rName, "tags.key3", "value3"),
-					resource.TestCheckResourceAttr(rName, "tags.key4", "value4"),
+					resource.TestCheckResourceAttr(rName, "tags.%", "1"),
+					resource.TestCheckResourceAttr(rName, "tags.foo1", "bar_update"),
 				),
 			},
 			{
@@ -97,34 +71,33 @@ func TestAccOrganizationalUnit_basic(t *testing.T) {
 	})
 }
 
-func testOrganizationalUnit_basic(name string) string {
+func testAccOrganizationalUnit_basic_step1(name string) string {
 	return fmt.Sprintf(`
-%s
+data "huaweicloud_organizations_organization" "test" {}
 
 resource "huaweicloud_organizations_organizational_unit" "test" {
   name      = "%s"
   parent_id = data.huaweicloud_organizations_organization.test.root_id
 
   tags = {
-    "key1" = "value1"
-    "key2" = "value2"
+    foo   = "bar"
+    owner = "terraform"
   }
 }
-`, testAccDatasourceOrganization_basic(), name)
+`, name)
 }
 
-func testOrganizationalUnit_basic_update(name string) string {
+func testAccOrganizationalUnit_basic_step2(name string) string {
 	return fmt.Sprintf(`
-%s
+data "huaweicloud_organizations_organization" "test" {}
 
 resource "huaweicloud_organizations_organizational_unit" "test" {
   name      = "%s"
   parent_id = data.huaweicloud_organizations_organization.test.root_id
 
   tags = {
-    "key3" = "value3"
-    "key4" = "value4"
+    foo1 = "bar_update"
   }
 }
-`, testAccDatasourceOrganization_basic(), name)
+`, name)
 }

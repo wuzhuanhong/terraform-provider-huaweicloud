@@ -2,168 +2,228 @@ package iam
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk/openstack/identity/v3.0/acl"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/iam"
 )
 
-func getIdentitACLResourceFunc(c *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	client, err := c.IAMV3Client(acceptance.HW_REGION_NAME)
+func getV3AclResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
+	client, err := cfg.IAMV3Client(acceptance.HW_REGION_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("error creating IAM client: %s", err)
 	}
 
-	switch state.Primary.Attributes["type"] {
-	case "console":
-		v, err := acl.ConsoleACLPolicyGet(client, state.Primary.ID).ConsoleExtract()
-		if err != nil {
-			return nil, err
-		}
-		if len(v.AllowAddressNetmasks) == 0 && len(v.AllowIPRanges) == 1 &&
-			v.AllowIPRanges[0].IPRange == "0.0.0.0-255.255.255.255" {
-			return nil, fmt.Errorf("identity ACL for console access <%s> not exists", state.Primary.ID)
-		}
-		return v, nil
-	case "api":
-		v, err := acl.APIACLPolicyGet(client, state.Primary.ID).APIExtract()
-		if err != nil {
-			return nil, err
-		}
-		if len(v.AllowAddressNetmasks) == 0 && len(v.AllowIPRanges) == 1 &&
-			v.AllowIPRanges[0].IPRange == "0.0.0.0-255.255.255.255" {
-			return nil, fmt.Errorf("identity ACL for console access <%s> not exists", state.Primary.ID)
-		}
-		return v, nil
-	}
-	return nil, nil
+	return iam.GetV3AclByDomainId(client, state.Primary.Attributes["type"], cfg.DomainID)
 }
 
-func TestAccIdentitACL_basic(t *testing.T) {
-	var object acl.ACLPolicy
-	resourceName := "huaweicloud_identity_acl.test"
+func TestAccV3Acl_basic(t *testing.T) {
+	var (
+		obj interface{}
 
-	rc := acceptance.InitResourceCheck(
-		resourceName,
-		&object,
-		getIdentitACLResourceFunc,
+		aclByConsole = "huaweicloud_identity_acl.test.0"
+		rcByConsole  = acceptance.InitResourceCheck(aclByConsole, &obj, getV3AclResourceFunc)
+
+		aclByApi = "huaweicloud_identity_acl.test.1"
+		rcByApi  = acceptance.InitResourceCheck(aclByApi, &obj, getV3AclResourceFunc)
 	)
 
-	// the runner public IP must by set
-	// otherwise, when the ACL is applied, you can't access your account
+	// the runner public IP must includes the IP address of your current machine and make sure the first IP address is
+	// the IP address of your current operating machine
+	// Otherwise, when the ACL is applied, you can't access with your current operating machine
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck: func() {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckAdminOnly(t)
-			acceptance.TestAccPreCheckRunnerPublicIP(t)
+			acceptance.TestAccPreCheckRunnerPublicIPs(t, 2)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
+		CheckDestroy: resource.ComposeTestCheckFunc(
+			rcByConsole.CheckResourceDestroy(),
+			rcByApi.CheckResourceDestroy(),
+		),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccIdentityACL_basic("console"),
+				Config: testAccV3Acl_basic_step1(),
 				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "type", "console"),
-					resource.TestCheckResourceAttr(resourceName, "ip_ranges.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "ip_cidrs.#", "1"),
+					rcByConsole.CheckResourceExists(),
+					resource.TestCheckResourceAttr(aclByConsole, "type", "console"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.#", "3"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.0.range", "172.16.0.0-172.16.0.255"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.0.description",
+						"This is a basic IP range for 172.16.0.0/24, which in console access"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.1.range", "192.168.0.0-192.168.0.255"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.1.description",
+						"This is a basic IP range for 192.168.0.0/24, which in console access"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.2.range", "10.16.0.0-10.16.0.255"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.2.description",
+						"This is a basic IP range for 10.16.0.0/24, which in console access"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.#", "1"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.0.cidr",
+						fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0])),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.0.description",
+						fmt.Sprintf("This is a basic IPv4 CIDR block %s for console access",
+							fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0]))),
+					rcByApi.CheckResourceExists(),
+					resource.TestCheckResourceAttr(aclByApi, "type", "api"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.#", "3"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.0.range", "172.16.0.0-172.16.0.255"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.0.description",
+						"This is a basic IP range for 172.16.0.0/24, which in api access"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.1.range", "192.168.0.0-192.168.0.255"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.1.description",
+						"This is a basic IP range for 192.168.0.0/24, which in api access"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.2.range", "10.16.0.0-10.16.0.255"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.2.description",
+						"This is a basic IP range for 10.16.0.0/24, which in api access"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.#", "1"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.0.cidr",
+						fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0])),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.0.description",
+						fmt.Sprintf("This is a basic IPv4 CIDR block %s for api access",
+							fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0]))),
 				),
 			},
 			{
-				Config: testAccIdentityACL_update("console"),
+				Config: testAccV3Acl_basic_step2(),
 				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "type", "console"),
-					resource.TestCheckResourceAttr(resourceName, "ip_ranges.#", "2"),
+					rcByConsole.CheckResourceExists(),
+					resource.TestCheckResourceAttr(aclByConsole, "type", "console"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.#", "3"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.0.range", "172.16.0.0-172.16.255.255"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.0.description",
+						"This is a updated IP range for 172.16.0.0/16, which in console access"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.1.range", "192.168.0.0-192.168.255.255"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.1.description",
+						"This is a updated IP range for 192.168.0.0/16, which in console access"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.2.range", "10.16.0.0-10.16.255.255"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_ranges.2.description",
+						"This is a updated IP range for 10.16.0.0/16, which in console access"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.#", "2"),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.0.cidr",
+						fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0])),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.0.description",
+						fmt.Sprintf("This is a basic IPv4 CIDR block %s for console access",
+							fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0]))),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.1.cidr",
+						fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[1])),
+					resource.TestCheckResourceAttr(aclByConsole, "ip_cidrs.1.description",
+						fmt.Sprintf("This is a basic IPv4 CIDR block %s for console access",
+							fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[1]))),
+					rcByApi.CheckResourceExists(),
+					resource.TestCheckResourceAttr(aclByApi, "type", "api"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.#", "3"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.0.range", "172.16.0.0-172.16.255.255"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.0.description",
+						"This is a updated IP range for 172.16.0.0/16, which in api access"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.1.range", "192.168.0.0-192.168.255.255"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.1.description",
+						"This is a updated IP range for 192.168.0.0/16, which in api access"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.2.range", "10.16.0.0-10.16.255.255"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_ranges.2.description",
+						"This is a updated IP range for 10.16.0.0/16, which in api access"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.#", "2"),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.0.cidr",
+						fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0])),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.0.description",
+						fmt.Sprintf("This is a basic IPv4 CIDR block %s for api access",
+							fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[0]))),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.1.cidr",
+						fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[1])),
+					resource.TestCheckResourceAttr(aclByApi, "ip_cidrs.1.description",
+						fmt.Sprintf("This is a basic IPv4 CIDR block %s for api access",
+							fmt.Sprintf("%s/32", strings.Split(acceptance.HW_RUNNER_PUBLIC_IPS, ",")[1]))),
 				),
 			},
 		},
 	})
 }
 
-func TestAccIdentitACL_apiAccess(t *testing.T) {
-	var object acl.ACLPolicy
-	resourceName := "huaweicloud_identity_acl.test"
-
-	rc := acceptance.InitResourceCheck(
-		resourceName,
-		&object,
-		getIdentitACLResourceFunc,
-	)
-
-	// the runner public IP must by set
-	// otherwise, when the ACL is applied, you can't access your account
-	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {
-			acceptance.TestAccPreCheck(t)
-			acceptance.TestAccPreCheckAdminOnly(t)
-			acceptance.TestAccPreCheckRunnerPublicIP(t)
-		},
-		ProviderFactories: acceptance.TestAccProviderFactories,
-		CheckDestroy:      rc.CheckResourceDestroy(),
-		Steps: []resource.TestStep{
-			{
-				Config: testAccIdentityACL_basic("api"),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "type", "api"),
-					resource.TestCheckResourceAttr(resourceName, "ip_ranges.#", "1"),
-					resource.TestCheckResourceAttr(resourceName, "ip_cidrs.#", "1"),
-				),
-			},
-			{
-				Config: testAccIdentityACL_update("api"),
-				Check: resource.ComposeTestCheckFunc(
-					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttr(resourceName, "type", "api"),
-					resource.TestCheckResourceAttr(resourceName, "ip_ranges.#", "2"),
-				),
-			},
-		},
-	})
+func testAccV3Acl_basic_step1() string {
+	return fmt.Sprintf(`
+variable "acl_types" {
+  type    = list(string)
+  default = ["console", "api"]
 }
 
-func testAccIdentityACL_basic(aclType string) string {
-	return fmt.Sprintf(`
+variable "runner_public_ips" {
+  type    = string
+  default = "%[1]s"
+}
+
 resource "huaweicloud_identity_acl" "test" {
-  type = "%[1]s"
+  count = 2
+
+  type = var.acl_types[count.index]
+
+  ip_ranges {
+    range       = "172.16.0.0-172.16.0.255"
+    description = "This is a basic IP range for 172.16.0.0/24, which in ${var.acl_types[count.index]} access"
+  }
+  ip_ranges {
+    range       = "192.168.0.0-192.168.0.255"
+    description = "This is a basic IP range for 192.168.0.0/24, which in ${var.acl_types[count.index]} access"
+  }
+  ip_ranges {
+	range       = "10.16.0.0-10.16.0.255"
+	description = "This is a basic IP range for 10.16.0.0/24, which in ${var.acl_types[count.index]} access"
+  }
+
+  dynamic "ip_cidrs" {
+    for_each = var.runner_public_ips != "" ? slice(split(",", var.runner_public_ips), 0, 1) : []
+
+    content {
+      cidr        = format("%%s/32", ip_cidrs.value)
+      description = "This is a basic IPv4 CIDR block ${format("%%s/32", ip_cidrs.value)} for ${var.acl_types[count.index]} access"
+    }
+  }
+}
+`, acceptance.HW_RUNNER_PUBLIC_IPS)
+}
+
+func testAccV3Acl_basic_step2() string {
+	return fmt.Sprintf(`
+variable "acl_types" {
+  type    = list(string)
+  default = ["console", "api"]
+}
+
+variable "runner_public_ips" {
+  type    = string
+  default = "%[1]s"
+}
+
+resource "huaweicloud_identity_acl" "test" {                                                                                              
+  count = 2
+
+  type = var.acl_types[count.index]
 
   ip_ranges {
     range       = "172.16.0.0-172.16.255.255"
-    description = "This is a basic ip range for %[1]s access"
-  }
-
-  ip_cidrs {
-    cidr        = "%[2]s/32"
-    description = "This is a basic ip address for %[1]s access"
-  }
-}
-`, aclType, acceptance.HW_CODEARTS_PUBLIC_IP_ADDRESS)
-}
-
-func testAccIdentityACL_update(aclType string) string {
-	return fmt.Sprintf(`
-resource "huaweicloud_identity_acl" "test" {
-  type = "%[1]s"
-
-  ip_ranges {
-    range       = "172.16.0.0-172.16.255.255"
-    description = "This is a update ip range 1 for %[1]s access"
+    description = "This is a updated IP range for 172.16.0.0/16, which in ${var.acl_types[count.index]} access"
   }
   ip_ranges {
     range       = "192.168.0.0-192.168.255.255"
-    description = "This is a update ip range 2 for %[1]s access"
+    description = "This is a updated IP range for 192.168.0.0/16, which in ${var.acl_types[count.index]} access"
+  }
+  ip_ranges {
+	range       = "10.16.0.0-10.16.255.255"
+	description = "This is a updated IP range for 10.16.0.0/16, which in ${var.acl_types[count.index]} access"
   }
 
-  ip_cidrs {
-    cidr        = "%[2]s/32"
-    description = "This is a update ip address for %[1]s access"
+  dynamic "ip_cidrs" {
+    for_each = var.runner_public_ips != "" ? slice(split(",", var.runner_public_ips), 0, 2) : []
+
+    content {
+      cidr        = format("%%s/32", ip_cidrs.value)
+      description = "This is a basic IPv4 CIDR block ${format("%%s/32", ip_cidrs.value)} for ${var.acl_types[count.index]} access"
+    }
   }
 }
-`, aclType, acceptance.HW_CODEARTS_PUBLIC_IP_ADDRESS)
+`, acceptance.HW_RUNNER_PUBLIC_IPS)
 }

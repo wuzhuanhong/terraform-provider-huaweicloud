@@ -4,62 +4,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/organizations"
 )
 
 func getPolicyResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	region := acceptance.HW_REGION_NAME
-	// getPolicy: Query Organizations policy
-	var (
-		getPolicyHttpUrl = "v1/organizations/policies/{policy_id}"
-		getPolicyProduct = "organizations"
-	)
-	getPolicyClient, err := cfg.NewServiceClient(getPolicyProduct, region)
+	client, err := cfg.NewServiceClient("organizations", acceptance.HW_REGION_NAME)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Organizations client: %s", err)
 	}
 
-	getPolicyPath := getPolicyClient.Endpoint + getPolicyHttpUrl
-	getPolicyPath = strings.ReplaceAll(getPolicyPath, "{policy_id}", state.Primary.ID)
-
-	getPolicyOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-
-	getPolicyResp, err := getPolicyClient.Request("GET", getPolicyPath, &getPolicyOpt)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving Organizations policy: %s", err)
-	}
-
-	getPolicyRespBody, err := utils.FlattenResponse(getPolicyResp)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving Organizations policy: %s", err)
-	}
-
-	return getPolicyRespBody, nil
+	return organizations.GetPolicyById(client, state.Primary.ID)
 }
 
 func TestAccPolicy_basic(t *testing.T) {
-	var obj interface{}
+	var (
+		name       = acceptance.RandomAccResourceName()
+		updateName = acceptance.RandomAccResourceName()
 
-	name := acceptance.RandomAccResourceName()
-	updateName := acceptance.RandomAccResourceName()
-	rName := "huaweicloud_organizations_policy.test"
-
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&obj,
-		getPolicyResourceFunc,
+		obj   interface{}
+		rName = "huaweicloud_organizations_policy.test"
+		rc    = acceptance.InitResourceCheck(rName, &obj, getPolicyResourceFunc)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -72,7 +43,7 @@ func TestAccPolicy_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testPolicy_basic(name),
+				Config: testAccPolicy_basic_step1(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", name),
@@ -80,26 +51,25 @@ func TestAccPolicy_basic(t *testing.T) {
 						checkPolicyContent("{\"Version\":\"5.0\",\"Statement\":[{\"Effect\":\"Deny\","+
 							"\"Action\":[]}]}")),
 					resource.TestCheckResourceAttr(rName, "type", "service_control_policy"),
-					resource.TestCheckResourceAttr(rName, "description",
-						"test service control policy description"),
-					resource.TestCheckResourceAttr(rName, "tags.key1", "value1"),
-					resource.TestCheckResourceAttr(rName, "tags.key2", "value2"),
+					resource.TestCheckResourceAttr(rName, "description", "Created by terraform script"),
+					resource.TestCheckResourceAttr(rName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(rName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttr(rName, "tags.owner", "terraform"),
 					resource.TestCheckResourceAttrSet(rName, "urn"),
 				),
 			},
 			{
-				Config: testPolicy_basic_update(updateName),
+				Config: testAccPolicy_basic_step2(updateName),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "name", updateName),
 					resource.TestCheckResourceAttrWith(rName, "content",
 						checkPolicyContent("{\"Version\":\"5.0\",\"Statement\":[{\"Sid\":\"Statement1\","+
-							"\"Effect\":\"Allow\",\"Action\":[\"*\"]}]}")),
+							"\"Effect\":\"Deny\",\"Action\":[\"vpc:subnets:delete\"]}]}")),
 					resource.TestCheckResourceAttr(rName, "type", "service_control_policy"),
-					resource.TestCheckResourceAttr(rName, "description",
-						"test service control policy description update"),
-					resource.TestCheckResourceAttr(rName, "tags.key3", "value3"),
-					resource.TestCheckResourceAttr(rName, "tags.key4", "value4"),
+					resource.TestCheckResourceAttr(rName, "description", ""),
+					resource.TestCheckResourceAttr(rName, "tags.%", "1"),
+					resource.TestCheckResourceAttr(rName, "tags.foo1", "bar_update"),
 				),
 			},
 			{
@@ -127,54 +97,48 @@ func checkPolicyContent(targetContent string) resource.CheckResourceAttrWithFunc
 	}
 }
 
-func testPolicy_basic(name string) string {
+func testAccPolicy_basic_step1(name string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_organizations_policy" "test" {
   name        = "%s"
   type        = "service_control_policy"
-  description = "test service control policy description"
-  content     = jsonencode(
-{
-	"Version":"5.0",
-	"Statement":[
-		{
-			"Effect":"Deny",
-			"Action":[]
-		}
-	]
-}
-)
+  description = "Created by terraform script"
+  content     = jsonencode({
+    Version : "5.0",
+    Statement : [
+      {
+        Effect : "Deny",
+        Action : []
+      }
+    ]
+  })
 
   tags = {
-    "key1" = "value1"
-    "key2" = "value2"
+    foo   = "bar"
+    owner = "terraform"
   }
 }
 `, name)
 }
 
-func testPolicy_basic_update(name string) string {
+func testAccPolicy_basic_step2(name string) string {
 	return fmt.Sprintf(`
 resource "huaweicloud_organizations_policy" "test" {
-  name        = "%s"
-  type        = "service_control_policy"
-  description = "test service control policy description update"
-  content     = jsonencode(
-{
-	"Version":"5.0",
-	"Statement":[
-		{
-			"Sid":"Statement1",
-			"Effect":"Allow",
-			"Action":["*"]
-		}
-	]
-}
-)
+  name    = "%s"
+  type    = "service_control_policy"
+  content = jsonencode({
+    Version : "5.0",
+    Statement : [
+      {
+        Sid : "Statement1",
+        Effect : "Deny",
+        Action : ["vpc:subnets:delete"]
+      }
+    ]
+  })
 
   tags = {
-    "key3" = "value3"
-    "key4" = "value4"
+    foo1 = "bar_update"
   }
 }
 `, name)

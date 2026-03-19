@@ -10,7 +10,7 @@ description: |-
 
 Manages an Organizations account resource within HuaweiCloud.
 
--> **NOTE:** Deleting Organizations account is not support. If you destroy a resource of Organizations account,
+-> Deleting Organizations account is not support. If you destroy a resource of Organizations account,
 the Organizations account is only removed from the state, but it remains in the cloud.
 
 ## Example Usage
@@ -40,25 +40,21 @@ The following arguments are supported:
 * `name` - (Required, String, ForceNew) Specifies the name of the account.
   Changing this parameter will create a new resource.
 
-* `email` - (Optional, String, ForceNew) Specifies the email address of the account.
-  This parameter is mandatory in **International Website**.
-  Changing this parameter will create a new resource.
-
-* `phone` - (Optional, String, ForceNew) Specifies the mobile number of the account.
-  This parameter is mandatory in **Chinese Mainland Website**.
-  Changing this parameter will create a new resource.
-
--> At least one of `email` and `phone` must be specified.
-
 * `agency_name` - (Optional, String, ForceNew) Specifies the agency name of the account.
   Changing this parameter will create a new resource.
 
 * `description` - (Optional, String) Specifies the description of the account.
 
-* `parent_id` - (Optional, String) Specifies the ID of the root or organization unit in which you want to create a new
-  account. The default is root ID.
+* `parent_id` - (Optional, String) Specifies the ID of the root or organizational unit to which the account belongs.
+  The default is the root ID.
 
-* `tags` - (Optional, Map) Specifies the key/value to attach to the account.
+* `tags` - (Optional, Map) Specifies the key/value pairs to be associated with the account.
+
+* `email` - (Optional, String, ForceNew) Specifies the email address of the account.  
+  Changing this parameter will create a new resource.
+
+* `phone` - (Optional, String, ForceNew) Specifies the mobile number of the account.  
+  Changing this parameter will create a new resource.
 
 ## Attribute Reference
 

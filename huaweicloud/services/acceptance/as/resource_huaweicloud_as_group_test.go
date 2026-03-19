@@ -105,6 +105,7 @@ func TestAccASGroup_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "status", "PAUSED"),
+					resource.TestCheckResourceAttr(resourceName, "delete_publicip", "true"),
 					resource.TestCheckResourceAttr(resourceName, "lbaas_listeners.0.weight", "1"),
 				),
 			},
@@ -284,7 +285,6 @@ resource "huaweicloud_as_group" "acc_as_group"{
   vpc_id                   = huaweicloud_vpc.test.id
   max_instance_number      = 5
   description              = "this is a basic AS group"
-  delete_publicip          = false
   delete_volume            = true
 
   networks {

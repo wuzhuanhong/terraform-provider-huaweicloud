@@ -9,5 +9,5 @@ tags:
     - name: CCM
 paths:
     /v1/private-certificates/{certificate_id}/export:
-        GET:
+        POST:
             tag: CCM

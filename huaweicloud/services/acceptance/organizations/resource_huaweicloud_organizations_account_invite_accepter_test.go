@@ -2,55 +2,30 @@ package organizations
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/organizations"
 )
 
 func getAccountInviteAccepterResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	// getAccountInviteAccepter: Query Organizations account invite accepter
-	var (
-		region                          = acceptance.HW_REGION_NAME
-		getAccountInviteAccepterHttpUrl = "v1/organizations/handshakes/{handshake_id}"
-		getAccountInviteAccepterProduct = "organizations"
-	)
-	getAccountInviteAccepterClient, err := cfg.NewServiceClient(getAccountInviteAccepterProduct, region)
+	getAccountInviteAccepterClient, err := cfg.NewServiceClient("organizations", acceptance.HW_REGION_NAME)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Organizations Client: %s", err)
+		return nil, fmt.Errorf("error creating Organizations client: %s", err)
 	}
 
-	getAccountInviteAccepterPath := getAccountInviteAccepterClient.Endpoint + getAccountInviteAccepterHttpUrl
-	getAccountInviteAccepterPath = strings.ReplaceAll(getAccountInviteAccepterPath, "{handshake_id}",
-		state.Primary.ID)
-
-	getAccountInviteAccepterOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	getAccountInviteAccepterResp, err := getAccountInviteAccepterClient.Request("GET",
-		getAccountInviteAccepterPath, &getAccountInviteAccepterOpt)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving AccountInviteAccepter: %s", err)
-	}
-	return utils.FlattenResponse(getAccountInviteAccepterResp)
+	return organizations.GetAccountInviteById(getAccountInviteAccepterClient, state.Primary.ID)
 }
 
 func TestAccAccountInviteAccepter_basic(t *testing.T) {
-	var obj interface{}
-
-	rName := "huaweicloud_organizations_account_invite_accepter.test"
-
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&obj,
-		getAccountInviteAccepterResourceFunc,
+	var (
+		obj   interface{}
+		rName = "huaweicloud_organizations_account_invite_accepter.test"
+		rc    = acceptance.InitResourceCheck(rName, &obj, getAccountInviteAccepterResourceFunc)
 	)
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -64,7 +39,7 @@ func TestAccAccountInviteAccepter_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccountInviteAccepter_basic(),
+				Config: testAccAccountInviteAccepter_basic(),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(rName, "invitation_id", acceptance.HW_ORGANIZATIONS_INVITATION_ID),
@@ -88,7 +63,7 @@ func TestAccAccountInviteAccepter_basic(t *testing.T) {
 	})
 }
 
-func testAccountInviteAccepter_basic() string {
+func testAccAccountInviteAccepter_basic() string {
 	return fmt.Sprintf(`
 resource "huaweicloud_organizations_account_invite_accepter" "test" {
   invitation_id                 = "%s"

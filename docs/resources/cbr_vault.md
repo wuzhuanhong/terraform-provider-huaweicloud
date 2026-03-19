@@ -7,7 +7,11 @@ description: ""
 
 # huaweicloud_cbr_vault
 
-Manages a CBR vault resource within HuaweiCloud.
+Manages a CBR vault resource within HuaweiCloud.  
+This resource supports managing disk (EVS volume) resources at the server or disk level under a vault.
+
+~> There are some limitations to the use of parameter `resources`, and please carefully read the parameter descriptions
+   and notes.
 
 ## Example Usage
 
@@ -237,11 +241,53 @@ The following arguments are supported:
 * `enterprise_project_id` - (Optional, String) Specifies the ID of the enterprise project to which the vault belongs.
 
 * `policy` - (Optional, List) Specifies the policy details to associate with the CBR vault.
-  The [object](#cbr_vault_policies) structure is documented below.
+  The [policy](#cbr_vault_policies) structure is documented below.
 
 * `resources` - (Optional, List) Specifies an array of one or more resources to attach to the CBR vault.  
   This feature is not supported for the **vmware** type and the **file** type.  
-  The [object](#cbr_vault_resources) structure is documented below.
+  The [resources](#cbr_vault_resources) structure is documented below.
+
+  -> This parameter supports incremental management and only manages locally configured resource binding information
+     (you can append resource bindings through other methods). However, if you want to delete a remote configuration
+     using TerraForm, you must first synchronize the remote configuration to your local machine via an update operation
+     (Currently, it is not supported to trigger changes solely by adding remote objects. For example, if
+     \[**A**, **B**\] is configured in local, and \[**C**\] is configured in remote through other ways, then
+     \[**A**, **B**, **C**\] will exist on the remote finally. To delete **C**, **C** must first be synchronized in the
+     update operations of other objects, such as updating locally to \[**A**, **C**] (deleting **B**, synchronizing
+     **C**). Only then can **C** be deleted in the next change.) before you can delete it locally in the next change.
+
+  -> If resources are configured remotely and the local state has omitted resources, a query executed after the command
+     `terraform refresh` or other resource changes will synchronize all resource configurations from the remote service
+     to the local state. That means the next time the local's resources are changed from omitted resources to with
+     values, the terminal will display the following message. Don't worry, this resource will only be created
+     incrementally. No existing data will be deleted from the remote repository.<br>
+     To avoid confusion caused by Terraform display issues, it is recommended to only operate on the last element of the
+     list during updates (adding and deleting elements at the end).
+
+```bash
+Terraform will perform the following actions:
+
+  # huaweicloud_cbr_vault.test will be updated in-place
+  ~ resource "huaweicloud_cbr_vault" "test" {
+        id                    = "d84968a7-5cec-40ad-aba2-741a1a339d79"
+        name                  = "tf_test_vault"
+        tags                  = {}
+        # (19 unchanged attributes hidden)
+
+      ~ resources {
+          ~ excludes  = [
+              + "2a7659b3-ce29-4bfe-add7-0ddae04a545f",
+            ]
+          ~ server_id = "1bb8b1df-67f2-462d-b7d0-db1d300309b3" -> "537062a2-93dd-44ec-9130-5530a1a79931"
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+```
+
+  ~> For disk backups of cloud server types, at least one disk must be reserved for each cloud server, not all disks
+     can be configured in excludes.
 
 * `backup_name_prefix` - (Optional, String, ForceNew) Specifies the backup name prefix.
   Changing this will create a new vault.

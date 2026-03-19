@@ -1,5 +1,5 @@
 ---
-subcategory: "API Gateway"
+subcategory: "API Gateway (Dedicated APIG)"
 layout: "huaweicloud"
 page_title: "HuaweiCloud: huaweicloud_apig_api_action"
 description: |-

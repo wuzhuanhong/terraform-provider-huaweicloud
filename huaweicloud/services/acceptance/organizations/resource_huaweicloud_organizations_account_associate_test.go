@@ -2,54 +2,33 @@ package organizations
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
-	"github.com/chnsz/golangsdk"
-
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/config"
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/acceptance"
-	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
+	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/services/organizations"
 )
 
 func getAccountAssociateResourceFunc(cfg *config.Config, state *terraform.ResourceState) (interface{}, error) {
-	region := acceptance.HW_REGION_NAME
-	// getAccount: Query Organizations account
-	var (
-		getAccountHttpUrl = "v1/organizations/accounts/{account_id}"
-		getAccountProduct = "organizations"
-	)
-	getAccountClient, err := cfg.NewServiceClient(getAccountProduct, region)
+	getAccountClient, err := cfg.NewServiceClient("organizations", acceptance.HW_REGION_NAME)
 	if err != nil {
-		return nil, fmt.Errorf("error creating Organizations Client: %s", err)
+		return nil, fmt.Errorf("error creating Organizations client: %s", err)
 	}
 
-	getAccountPath := getAccountClient.Endpoint + getAccountHttpUrl
-	getAccountPath = strings.ReplaceAll(getAccountPath, "{account_id}", state.Primary.ID)
-
-	getAccountOpt := golangsdk.RequestOpts{
-		KeepResponseBody: true,
-	}
-	getAccountResp, err := getAccountClient.Request("GET", getAccountPath, &getAccountOpt)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving AccountAssociate: %s", err)
-	}
-	return utils.FlattenResponse(getAccountResp)
+	return organizations.GetAccountById(getAccountClient, state.Primary.ID)
 }
 
+// Before running the test, please provide an account ID under the root organization.
 func TestAccAccountAssociate_basic(t *testing.T) {
-	var obj interface{}
+	var (
+		name = acceptance.RandomAccResourceName()
 
-	name := acceptance.RandomAccResourceName()
-	rName := "huaweicloud_organizations_account_associate.test"
-
-	rc := acceptance.InitResourceCheck(
-		rName,
-		&obj,
-		getAccountAssociateResourceFunc,
+		obj   interface{}
+		rName = "huaweicloud_organizations_account_associate.test"
+		rc    = acceptance.InitResourceCheck(rName, &obj, getAccountAssociateResourceFunc)
 	)
 
 	// lintignore:AT001
@@ -58,16 +37,15 @@ func TestAccAccountAssociate_basic(t *testing.T) {
 			acceptance.TestAccPreCheck(t)
 			acceptance.TestAccPreCheckMultiAccount(t)
 			acceptance.TestAccPreCheckOrganizationsOpen(t)
-			acceptance.TestAccPreCheckOrganizationsOrganizationalUnitId(t)
+			acceptance.TestAccPreCheckOrganizationsAccountId(t)
 		},
 		ProviderFactories: acceptance.TestAccProviderFactories,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccountAssociate_basic(name),
+				Config: testAccAccountAssociate_basic_step1(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "account_id",
-						"huaweicloud_organizations_account.test", "id"),
+					resource.TestCheckResourceAttr(rName, "account_id", acceptance.HW_ORGANIZATIONS_ACCOUNT_ID),
 					resource.TestCheckResourceAttrPair(rName, "parent_id",
 						"huaweicloud_organizations_organizational_unit.test", "id"),
 					resource.TestCheckResourceAttrSet(rName, "name"),
@@ -77,13 +55,12 @@ func TestAccAccountAssociate_basic(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccountAssociate_basic_update(name),
+				Config: testAccAccountAssociate_basic_step2(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
-					resource.TestCheckResourceAttrPair(rName, "account_id",
-						"huaweicloud_organizations_account.test", "id"),
-					resource.TestCheckResourceAttr(rName, "parent_id",
-						acceptance.HW_ORGANIZATIONS_ORGANIZATIONAL_UNIT_ID),
+					resource.TestCheckResourceAttr(rName, "account_id", acceptance.HW_ORGANIZATIONS_ACCOUNT_ID),
+					resource.TestCheckResourceAttrPair(rName, "parent_id",
+						"data.huaweicloud_organizations_organization.test", "root_id"),
 				),
 			},
 			{
@@ -95,26 +72,35 @@ func TestAccAccountAssociate_basic(t *testing.T) {
 	})
 }
 
-func testAccountAssociate_basic(name string) string {
+func testAccAccountAssociate_base(name string) string {
+	return fmt.Sprintf(`
+data "huaweicloud_organizations_organization" "test" {}
+
+resource "huaweicloud_organizations_organizational_unit" "test" {
+  name      = "%[1]s"
+  parent_id = data.huaweicloud_organizations_organization.test.root_id
+}
+`, name)
+}
+
+func testAccAccountAssociate_basic_step1(name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
-%[2]s
-
 resource "huaweicloud_organizations_account_associate" "test" {
-  account_id = huaweicloud_organizations_account.test.id
+  account_id = "%[2]s"
   parent_id  = huaweicloud_organizations_organizational_unit.test.id
 }
-`, testOrganizationalUnit_basic(name), testAccount_basic(name))
+`, testAccAccountAssociate_base(name), acceptance.HW_ORGANIZATIONS_ACCOUNT_ID)
 }
 
-func testAccountAssociate_basic_update(name string) string {
+func testAccAccountAssociate_basic_step2(name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
 resource "huaweicloud_organizations_account_associate" "test" {
-  account_id = huaweicloud_organizations_account.test.id
-  parent_id  = "%s"
+  account_id = "%[2]s"
+  parent_id  = data.huaweicloud_organizations_organization.test.root_id
 }
-`, testAccount_basic(name), name, acceptance.HW_ORGANIZATIONS_ORGANIZATIONAL_UNIT_ID)
+`, testAccAccountAssociate_base(name), acceptance.HW_ORGANIZATIONS_ACCOUNT_ID)
 }

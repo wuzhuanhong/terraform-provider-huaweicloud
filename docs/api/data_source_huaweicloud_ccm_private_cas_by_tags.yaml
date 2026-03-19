@@ -1,0 +1,13 @@
+info:
+    version: ""
+    title: data_source_huaweicloud_ccm_private_cas_by_tags
+    description: ""
+schemes:
+    - https
+host: huaweicloud.com
+tags:
+    - name: CCM
+paths:
+    /v1/private-certificate-authorities/resource-instances/filter:
+        POST:
+            tag: CCM
