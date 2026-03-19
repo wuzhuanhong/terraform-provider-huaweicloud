@@ -153,6 +153,12 @@ The following arguments are supported:
 * `data_center` - (Optional, List, NonUpdatable) Specifies the data center configuration of the microservice instance.  
   The [data_center](#cse_microservice_instance_data_center) structure is documented below.
 
+* `status` - (Optional, String) Specifies the status of the microservice instance.  
+  The valid values are as follows:
+  + **UP**
+  + **OUTOFSERVICE**
+  + **DOWN**
+
 <a name="cse_microservice_instance_health_check"></a>
 The `health_check` block supports:
 
@@ -181,8 +187,6 @@ The `data_center` block supports:
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The ID of the microservice instance.
-
-* `status` - The status of the microservice instance.
 
 ## Timeouts
 

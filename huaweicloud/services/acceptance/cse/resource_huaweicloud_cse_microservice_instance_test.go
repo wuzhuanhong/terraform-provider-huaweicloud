@@ -53,7 +53,7 @@ func TestAccMicroserviceInstance_basic(t *testing.T) {
 		),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccMicroserviceInstance_basic(randName),
+				Config: testAccMicroserviceInstance_basic_step1(randName),
 				Check: resource.ComposeTestCheckFunc(
 					// With auth_address parameter.
 					rcWithAuthAddress.CheckResourceExists(),
@@ -72,7 +72,7 @@ func TestAccMicroserviceInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(withAuthAddress, "data_center.0.region", acceptance.HW_REGION_NAME),
 					resource.TestCheckResourceAttrPair(withAuthAddress, "data_center.0.availability_zone",
 						"data.huaweicloud_availability_zones.test", "names.0"),
-					resource.TestCheckResourceAttr(withAuthAddress, "status", "UP"),
+					resource.TestCheckResourceAttr(withAuthAddress, "status", "DOWN"),
 					// Without auth_address parameter.
 					rcWithoutAuthAddress.CheckResourceExists(),
 					resource.TestCheckResourceAttrPair(withAuthAddress, "microservice_id",
@@ -90,7 +90,25 @@ func TestAccMicroserviceInstance_basic(t *testing.T) {
 					resource.TestCheckResourceAttr(withoutAuthAddress, "data_center.0.region", acceptance.HW_REGION_NAME),
 					resource.TestCheckResourceAttrPair(withoutAuthAddress, "data_center.0.availability_zone",
 						"data.huaweicloud_availability_zones.test", "names.0"),
+					resource.TestCheckResourceAttr(withoutAuthAddress, "status", "DOWN"),
+				),
+			},
+			{
+				Config: testAccMicroserviceInstance_basic_step2(randName),
+				Check: resource.ComposeTestCheckFunc(
+					rcWithAuthAddress.CheckResourceExists(),
+					resource.TestCheckResourceAttr(withAuthAddress, "status", "UP"),
+					rcWithoutAuthAddress.CheckResourceExists(),
 					resource.TestCheckResourceAttr(withoutAuthAddress, "status", "UP"),
+				),
+			},
+			{
+				Config: testAccMicroserviceInstance_basic_step3(randName),
+				Check: resource.ComposeTestCheckFunc(
+					rcWithAuthAddress.CheckResourceExists(),
+					resource.TestCheckResourceAttr(withAuthAddress, "status", "OUTOFSERVICE"),
+					rcWithoutAuthAddress.CheckResourceExists(),
+					resource.TestCheckResourceAttr(withoutAuthAddress, "status", "OUTOFSERVICE"),
 				),
 			},
 			{
@@ -177,13 +195,15 @@ resource "huaweicloud_cse_microservice" "test" {
 		acceptance.HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD)
 }
 
-func testAccMicroserviceInstance_basic(name string) string {
+func testAccMicroserviceInstance_basic_with_status(name, status string) string {
 	return fmt.Sprintf(`
 %[1]s
 
 resource "huaweicloud_cse_microservice_instance" "with_auth_address" {
   auth_address    = local.id_filter_result[0].service_registry_addresses[0].public
   connect_address = local.id_filter_result[0].service_registry_addresses[0].public
+  admin_user      = "root"
+  admin_pass      = "%[2]s"
 
   microservice_id = huaweicloud_cse_microservice.test.id
   host_name       = "localhost_with_auth_address"
@@ -202,12 +222,11 @@ resource "huaweicloud_cse_microservice_instance" "with_auth_address" {
 
   data_center {
     name              = "dc1"
-    region            = "%[2]s"
+    region            = "%[3]s"
     availability_zone = data.huaweicloud_availability_zones.test.names[0]
   }
 
-  admin_user = "root"
-  admin_pass = "%[3]s"
+  status = "%[4]s"
 
   lifecycle {
     ignore_changes = [
@@ -218,6 +237,8 @@ resource "huaweicloud_cse_microservice_instance" "with_auth_address" {
 
 resource "huaweicloud_cse_microservice_instance" "without_auth_address" {
   connect_address = local.id_filter_result[0].service_registry_addresses[0].public
+  admin_user      = "root"
+  admin_pass      = "%[2]s"
 
   microservice_id = huaweicloud_cse_microservice.test.id
   host_name       = "localhost_without_auth_address"
@@ -236,12 +257,11 @@ resource "huaweicloud_cse_microservice_instance" "without_auth_address" {
 
   data_center {
     name              = "dc1"
-    region            = "%[2]s"
+    region            = "%[3]s"
     availability_zone = data.huaweicloud_availability_zones.test.names[0]
   }
 
-  admin_user = "root"
-  admin_pass = "%[3]s"
+  status = "%[4]s"
 
   lifecycle {
     ignore_changes = [
@@ -250,6 +270,19 @@ resource "huaweicloud_cse_microservice_instance" "without_auth_address" {
   }
 }
 `, testAccMicroserviceInstance_base(name),
+		acceptance.HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD,
 		acceptance.HW_REGION_NAME,
-		acceptance.HW_CSE_MICROSERVICE_ENGINE_ADMIN_PASSWORD)
+		status)
+}
+
+func testAccMicroserviceInstance_basic_step1(name string) string {
+	return testAccMicroserviceInstance_basic_with_status(name, "DOWN")
+}
+
+func testAccMicroserviceInstance_basic_step2(name string) string {
+	return testAccMicroserviceInstance_basic_with_status(name, "UP")
+}
+
+func testAccMicroserviceInstance_basic_step3(name string) string {
+	return testAccMicroserviceInstance_basic_with_status(name, "OUTOFSERVICE")
 }

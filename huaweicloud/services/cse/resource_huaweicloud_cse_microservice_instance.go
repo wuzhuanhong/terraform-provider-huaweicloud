@@ -3,6 +3,7 @@ package cse
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -52,6 +53,7 @@ var (
 // @API CSE POST /v4/token
 // @API CSE POST /v4/{project_id}/registry/microservices/{service_id}/instances
 // @API CSE GET /v4/{project_id}/registry/microservices/{service_id}/instances/{instance_id}
+// @API CSE PUT /v4/{project_id}/registry/microservices/{service_id}/instances/{instance_id}/status
 // @API CSE DELETE /v4/{project_id}/registry/microservices/{service_id}/instances/{instance_id}
 func ResourceMicroserviceInstance() *schema.Resource {
 	return &schema.Resource{
@@ -65,6 +67,8 @@ func ResourceMicroserviceInstance() *schema.Resource {
 		},
 
 		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(3 * time.Minute),
+			Update: schema.DefaultTimeout(3 * time.Minute),
 			Delete: schema.DefaultTimeout(3 * time.Minute),
 		},
 
@@ -191,10 +195,9 @@ func ResourceMicroserviceInstance() *schema.Resource {
 				},
 				Description: `The data center configuration of the microservice instance.`,
 			},
-
-			// Attributes.
 			"status": {
 				Type:        schema.TypeString,
+				Optional:    true,
 				Computed:    true,
 				Description: `The status of the microservice instance.`,
 			},
@@ -311,6 +314,68 @@ func createInstance(client *golangsdk.ServiceClient, d *schema.ResourceData) (in
 	return utils.FlattenResponse(requestResp)
 }
 
+func microserviceInstanceStatusRefreshFunc(client *golangsdk.ServiceClient, d *schema.ResourceData, instanceId string,
+	targets []string, allowNotFound bool) resource.StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		var (
+			authAddress    = getAuthAddress(d)
+			adminUser      = d.Get("admin_user").(string)
+			adminPass      = d.Get("admin_pass").(string)
+			microserviceId = d.Get("microservice_id").(string)
+		)
+
+		respBody, err := GetInstance(client, authAddress, adminUser, adminPass, microserviceId, instanceId)
+		if err != nil {
+			convertedErr := common.ConvertExpected400ErrInto404Err(err, "errorCode", microserviceInstanceNotFoundCodes...)
+			if _, ok := convertedErr.(golangsdk.ErrDefault404); ok && allowNotFound {
+				return "continue", "PENDING", nil
+			}
+			return nil, "ERROR", convertedErr
+		}
+
+		status := utils.PathSearch("instance.status", respBody, "").(string)
+		if utils.StrSliceContains(targets, status) {
+			return respBody, "COMPLETED", nil
+		}
+		return respBody, "PENDING", nil
+	}
+}
+
+func updateMicroserviceInstanceStatus(client *golangsdk.ServiceClient, d *schema.ResourceData, instanceId, status string) error {
+	var (
+		httpUrl        = "v4/{project_id}/registry/microservices/{service_id}/instances/{instance_id}/status"
+		authAddress    = getAuthAddress(d)
+		adminUser      = d.Get("admin_user").(string)
+		adminPass      = d.Get("admin_pass").(string)
+		microserviceId = d.Get("microservice_id").(string)
+	)
+
+	updatePath := client.Endpoint + httpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", microserviceInstanceProjectId)
+	updatePath = strings.ReplaceAll(updatePath, "{service_id}", microserviceId)
+	updatePath = strings.ReplaceAll(updatePath, "{instance_id}", instanceId)
+	updatePath = fmt.Sprintf("%s?value=%s", updatePath, status)
+
+	updateOpts := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      buildRequestMoreHeaders(client.ProjectID),
+	}
+
+	token, err := GetAuthorizationToken(authAddress, adminUser, adminPass)
+	if err != nil {
+		return err
+	}
+	if token != "" {
+		updateOpts.MoreHeaders["Authorization"] = token
+	}
+
+	_, err = client.Request("PUT", updatePath, &updateOpts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func resourceMicroserviceInstanceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Creating a microservice instance in the microservice engine requires building a client based on the microservice
 	// engine's connection address, which does not use IAM authentication.
@@ -326,6 +391,44 @@ func resourceMicroserviceInstanceCreate(ctx context.Context, d *schema.ResourceD
 		return diag.Errorf("unable to find the instance ID from the API response")
 	}
 	d.SetId(instanceId)
+
+	log.Printf("[DEBUG] Waiting for the microservice instance (%s) status to become 'UP'", instanceId)
+	stateConf := &resource.StateChangeConf{
+		Pending:      []string{"PENDING"},
+		Target:       []string{"COMPLETED"},
+		Refresh:      microserviceInstanceStatusRefreshFunc(client, d, instanceId, []string{"UP"}, true),
+		Timeout:      d.Timeout(schema.TimeoutCreate),
+		Delay:        5 * time.Second,
+		PollInterval: 10 * time.Second,
+	}
+	resp, err = stateConf.WaitForStateContext(ctx)
+	if err != nil {
+		return diag.Errorf("error waiting for the microservice instance (%s) status to become 'UP': %s", instanceId, err)
+	}
+
+	// If the user specifies the expected initial status, it may differ from the status after registration.
+	// In this case, an additional update status request is required to keep the instance status consistent.
+	if v, ok := d.GetOk("status"); ok && utils.PathSearch("instance.status", resp, "").(string) != v.(string) {
+		instanceStatus := v.(string)
+		if err := updateMicroserviceInstanceStatus(client, d, instanceId, instanceStatus); err != nil {
+			return diag.Errorf("error updating the status of the microservice instance (%s): %s", instanceId, err)
+		}
+
+		log.Printf("[DEBUG] Waiting for the microservice instance (%s) status to become '%s'", instanceId, instanceStatus)
+		stateConf := &resource.StateChangeConf{
+			Pending:      []string{"PENDING"},
+			Target:       []string{"COMPLETED"},
+			Refresh:      microserviceInstanceStatusRefreshFunc(client, d, instanceId, []string{instanceStatus}, false),
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			Delay:        5 * time.Second,
+			PollInterval: 10 * time.Second,
+		}
+		_, err = stateConf.WaitForStateContext(ctx)
+		if err != nil {
+			return diag.Errorf("error waiting for the microservice instance (%s) status to become '%s': %s", instanceId, instanceStatus, err)
+		}
+		return nil
+	}
 
 	return resourceMicroserviceInstanceRead(ctx, d, meta)
 }
@@ -431,8 +534,38 @@ func resourceMicroserviceInstanceRead(_ context.Context, d *schema.ResourceData,
 	return diag.FromErr(mErr.ErrorOrNil())
 }
 
-func resourceMicroserviceInstanceUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
-	return nil
+func resourceMicroserviceInstanceUpdate(ctx context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+	var (
+		// Creating a microservice instance in the microservice engine requires building a client based on the
+		// microservice engine's connection address, which does not use IAM authentication.
+		client     = common.NewCustomClient(true, d.Get("connect_address").(string))
+		instanceId = d.Id()
+	)
+
+	if d.HasChange("status") {
+		instanceStatus := d.Get("status").(string)
+		err := updateMicroserviceInstanceStatus(client, d, instanceId, instanceStatus)
+		if err != nil {
+			return diag.Errorf("error updating the status of the microservice instance (%s): %s", instanceId, err)
+		}
+
+		log.Printf("[DEBUG] Waiting for the microservice instance (%s) status to become '%s'", instanceId, instanceStatus)
+		stateConf := &resource.StateChangeConf{
+			Pending:      []string{"PENDING"},
+			Target:       []string{"COMPLETED"},
+			Refresh:      microserviceInstanceStatusRefreshFunc(client, d, instanceId, []string{instanceStatus}, false),
+			Timeout:      d.Timeout(schema.TimeoutUpdate),
+			Delay:        5 * time.Second,
+			PollInterval: 10 * time.Second,
+		}
+		_, err = stateConf.WaitForStateContext(ctx)
+		if err != nil {
+			return diag.Errorf("error waiting for the microservice instance (%s) status to become '%s': %s", instanceId, instanceStatus, err)
+		}
+		return nil
+	}
+
+	return resourceMicroserviceInstanceRead(ctx, d, nil)
 }
 
 func deleteInstance(client *golangsdk.ServiceClient, authAddress, adminUser, adminPass, microserviceId, instanceId string) error {
