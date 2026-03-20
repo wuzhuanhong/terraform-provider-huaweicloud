@@ -2430,6 +2430,7 @@ func Provider() *schema.Provider {
 			"huaweicloud_dws_cluster_user_authorities":        dws.DataSourceClusterUserAuthorities(),
 			"huaweicloud_dws_clusters":                        dws.DataSourceDwsClusters(),
 			"huaweicloud_dws_disaster_recovery_tasks":         dws.DataSourceDisasterRecoveryTasks(),
+			"huaweicloud_dws_disk_details":                    dws.DataSourceDiskDetails(),
 			"huaweicloud_dws_event_subscriptions":             dws.DataSourceEventSubscriptions(),
 			"huaweicloud_dws_flavors":                         dws.DataSourceDwsFlavors(),
 			"huaweicloud_dws_logical_cluster_rings":           dws.DataSourceLogicalClusterRings(),
