@@ -20,7 +20,8 @@ func getNacosNamespaceFunc(cfg *config.Config, state *terraform.ResourceState) (
 		return nil, fmt.Errorf("error creating CSE client: %s", err)
 	}
 
-	return cse.GetNacosNamespaceById(client, state.Primary.Attributes["engine_id"], state.Primary.ID)
+	return cse.GetNacosNamespaceById(client, state.Primary.Attributes["engine_id"],
+		state.Primary.Attributes["enterprise_project_id"], state.Primary.ID)
 }
 
 func TestAccNacosNamespace_basic(t *testing.T) {
@@ -30,7 +31,7 @@ func TestAccNacosNamespace_basic(t *testing.T) {
 		name       = acceptance.RandomAccResourceName()
 		updateName = acceptance.RandomAccResourceName()
 
-		uuid, _ = uuid.GenerateUUID()
+		randUUID, _ = uuid.GenerateUUID()
 
 		resourceName = "huaweicloud_cse_nacos_namespace.test"
 		rc           = acceptance.InitResourceCheck(resourceName, &obj, getNacosNamespaceFunc)
@@ -45,8 +46,9 @@ func TestAccNacosNamespace_basic(t *testing.T) {
 		CheckDestroy:      rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccNacosNamespace_basic(uuid, name),
-				ExpectError: regexp.MustCompile(fmt.Sprintf(`unable to create the namespace because the Nacos engine \(%s\) does not exist`, uuid)),
+				Config: testAccNacosNamespace_basic(randUUID, name),
+				ExpectError: regexp.MustCompile(
+					fmt.Sprintf(`unable to create the namespace because the Nacos engine \(%s\) does not exist`, randUUID)),
 			},
 			{
 				Config: testAccNacosNamespace_basic(acceptance.HW_CSE_NACOS_MICROSERVICE_ENGINE_ID, name),
@@ -74,7 +76,7 @@ func TestAccNacosNamespace_basic(t *testing.T) {
 
 func testAccNacosNamespaceImportStateIdFunc(resName string) resource.ImportStateIdFunc {
 	return func(s *terraform.State) (string, error) {
-		var engineId, namespaceId string
+		var engineId, namespaceId, enterpriseProjectId string
 		rs, ok := s.RootModule().Resources[resName]
 		if !ok {
 			return "", fmt.Errorf("resource (%s) not found", resName)
@@ -82,20 +84,27 @@ func testAccNacosNamespaceImportStateIdFunc(resName string) resource.ImportState
 
 		engineId = rs.Primary.Attributes["engine_id"]
 		namespaceId = rs.Primary.ID
+		enterpriseProjectId = rs.Primary.Attributes["enterprise_project_id"]
 
-		if engineId == "" || namespaceId == "" {
-			return "", fmt.Errorf("missing some attributes, want '<engine_id>/<id>', but got '%s/%s'", engineId, namespaceId)
+		if engineId == "" || namespaceId == "" || enterpriseProjectId == "" {
+			return "", fmt.Errorf("missing some attributes, want '<engine_id>/<id>/<enterprise_project_id>', but got '%s/%s/%s'",
+				engineId, namespaceId, enterpriseProjectId)
 		}
 
-		return fmt.Sprintf("%s/%s", engineId, namespaceId), nil
+		return fmt.Sprintf("%s/%s/%s", engineId, namespaceId, enterpriseProjectId), nil
 	}
 }
 
 func testAccNacosNamespace_basic(engineId, name string) string {
 	return fmt.Sprintf(`
-resource "huaweicloud_cse_nacos_namespace" "test" {
-  engine_id = "%[1]s"
-  name      = "%[2]s"
+variable "enterprise_project_id" {
+  default = "%[1]s"
 }
-`, engineId, name)
+
+resource "huaweicloud_cse_nacos_namespace" "test" {
+  engine_id             = "%[2]s"
+  name                  = "%[3]s"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
+}
+`, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST, engineId, name)
 }

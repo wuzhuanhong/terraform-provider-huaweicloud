@@ -14,9 +14,13 @@ Use this data source to query available Nacos namespaces within HuaweiCloud.
 
 ```hcl
 variable "nacos_engine_id" {}
+variable "enterprise_project_id" {}
 
 data "huaweicloud_cse_nacos_namespaces" "test" {
-  engine_id = var.nacos_engine_id
+  engine_id             = var.nacos_engine_id
+  # If the Nacos engine is located under a specific enterprise project, you can only retrieve the list of namespaces
+  # under the target engine by specifying the corresponding enterprise project.
+  enterprise_project_id = var.enterprise_project_id 
 }
 ```
 
@@ -29,16 +33,19 @@ The following arguments are supported:
 
 * `engine_id` - (Required, String) Specifies the ID of the Nacos microservice engine to which the namespaces belong.
 
+* `enterprise_project_id` - (Optional, String) Specifies the ID of the enterprise project to which the Nacos namespaces
+  belong.
+
 ## Attribute Reference
 
 In addition to all arguments above, the following attributes are exported:
 
 * `id` - The data source ID.
 
-* `namespaces` - All queried Nacos namespaces.  
-  The [namespaces](#cse_nacos_namespaces) structure is documented below.
+* `namespaces` - All queried Nacos namespaces that match the filter parameters.
+  The [namespaces](#cse_nacos_namespaces_attr) structure is documented below.
 
-<a name="cse_nacos_namespaces"></a>
+<a name="cse_nacos_namespaces_attr"></a>
 The `namespaces` block supports:
 
 * `id` - The ID of the Nacos namespace.

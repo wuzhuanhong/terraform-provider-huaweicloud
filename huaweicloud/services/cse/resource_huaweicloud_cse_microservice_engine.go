@@ -25,6 +25,7 @@ const DefaultVersion = "CSE2"
 
 var (
 	microserviceEngineNotFoundCodes = []string{
+		"SVCSTG.00401116",
 		"SVCSTG.00501116",
 		"SVCSTG.00501125",
 	}

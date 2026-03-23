@@ -33,7 +33,7 @@ func TestAccDataNacosNamespaces_basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					dc.CheckResourceExists(),
 					resource.TestMatchResourceAttr(all, "namespaces.#", regexp.MustCompile(`[1-9]\d*`)),
-					resource.TestCheckOutput("all_custom_namespace_ids_set", "true"),
+					resource.TestCheckOutput("all_custom_namespaces_set", "true"),
 				),
 			},
 		},
@@ -44,36 +44,49 @@ func testAccDataNacosNamespaces_basic_invalidEngine() string {
 	randUUID, _ := uuid.GenerateUUID()
 
 	return fmt.Sprintf(`
-data "huaweicloud_cse_nacos_namespaces" "test" {
-  engine_id = "%[1]s"
+variable "enterprise_project_id" {
+  default = "%[1]s"
 }
-`, randUUID)
+
+data "huaweicloud_cse_nacos_namespaces" "test" {
+  engine_id             = "%[1]s"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
+}
+`, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST, randUUID)
 }
 
 func testAccDataNacosNamespaces_basic() string {
 	name := acceptance.RandomAccResourceName()
 
 	return fmt.Sprintf(`
+variable "enterprise_project_id" {
+  default = "%[1]s"
+}
+
 resource "huaweicloud_cse_nacos_namespace" "test" {
-  engine_id = "%[1]s"
-  name      = "%[2]s"
+  engine_id             = "%[2]s"
+  name                  = "%[3]s"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
 }
 
 data "huaweicloud_cse_nacos_namespaces" "test" {
   depends_on = [huaweicloud_cse_nacos_namespace.test]
 
-  engine_id = "%[1]s"
+  engine_id             = "%[2]s"
+  enterprise_project_id = var.enterprise_project_id != "" ? var.enterprise_project_id : null
 }
 
 # Check whether custom namespace ID is set
 locals {
-  namespace_id_validate_result = [
-    for o in data.huaweicloud_cse_nacos_namespaces.test.namespaces : o.id != "" if o.name != "public" 
+  namespaces_result = [
+    for o in data.huaweicloud_cse_nacos_namespaces.test.namespaces : o if o.id == huaweicloud_cse_nacos_namespace.test.id &&
+	  o.name == huaweicloud_cse_nacos_namespace.test.name && o.name != "public"
   ]
 }
 
-output "all_custom_namespace_ids_set" {
-  value = length(local.namespace_id_validate_result) > 0 && alltrue(local.namespace_id_validate_result)
+output "all_custom_namespaces_set" {
+  value = length(local.namespaces_result) > 0
 }
-`, acceptance.HW_CSE_NACOS_MICROSERVICE_ENGINE_ID, name)
+`, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST,
+		acceptance.HW_CSE_NACOS_MICROSERVICE_ENGINE_ID, name)
 }
