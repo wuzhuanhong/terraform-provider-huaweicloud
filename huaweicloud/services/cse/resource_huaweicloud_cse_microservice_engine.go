@@ -21,7 +21,10 @@ import (
 	"github.com/huaweicloud/terraform-provider-huaweicloud/huaweicloud/utils"
 )
 
-const DefaultVersion = "CSE2"
+const (
+	DefaultVersion                     = "CSE2"
+	MicroserviceEngineTagsResourceType = "cseEngines"
+)
 
 var (
 	microserviceEngineNotFoundCodes = []string{
@@ -39,7 +42,6 @@ var (
 		"version",
 		"admin_pass",
 		"enterprise_project_id",
-		"description",
 		"eip_id",
 		"extend_params",
 	}
@@ -48,8 +50,11 @@ var (
 // @API VPC GET /v1/{project_id}/subnets/{subnet_id}
 // @API VPC GET /v1/{project_id}/vpcs/{vpc_id}
 // @API CSE POST /v2/{project_id}/enginemgr/engines
+// @API CSE POST /v2/{project_id}/{resource_type}/{resource_id}/tags/create
 // @API CSE GET /v2/{project_id}/enginemgr/engines/{engine_id}/jobs/{job_id}
 // @API CSE GET /v2/{project_id}/enginemgr/engines/{engine_id}
+// @API CSE PUT /v2/{project_id}/enginemgr/engines/{engine_id}
+// @API CSE DELETE /v2/{project_id}/{resource_type}/{resource_id}/tags/delete
 // @API CSE DELETE /v2/{project_id}/enginemgr/engines/{engine_id}
 func ResourceMicroserviceEngine() *schema.Resource {
 	return &schema.Resource{
@@ -129,6 +134,7 @@ func ResourceMicroserviceEngine() *schema.Resource {
 			"description": {
 				Type:        schema.TypeString,
 				Optional:    true,
+				Computed:    true,
 				Description: `The description of the microservice engine.`,
 			},
 			"eip_id": {
@@ -143,6 +149,9 @@ func ResourceMicroserviceEngine() *schema.Resource {
 				Elem:        &schema.Schema{Type: schema.TypeString},
 				Description: `The extended parameters of the microservice engine.`,
 			},
+			"tags": common.TagsSchema(
+				`The key/value pairs to associate with the microservice engine.`,
+			),
 
 			// Attributes.
 			"service_limit": {
@@ -366,6 +375,100 @@ func refreshMicroserviceEngineJobFunc(client *golangsdk.ServiceClient, engineId,
 	}
 }
 
+func getMicroserviceEngineTagsChange(d *schema.ResourceData) (removeTags, addTags []interface{}) {
+	oRaw, nRaw := d.GetChange("tags")
+	oMap := oRaw.(map[string]interface{})
+	nMap := nRaw.(map[string]interface{})
+
+	for k, v := range oMap {
+		if _, ok := nMap[k]; !ok || nMap[k] != v {
+			removeTags = append(removeTags, map[string]interface{}{
+				"key":   k,
+				"value": v,
+			})
+		}
+	}
+
+	for k, v := range nMap {
+		if _, ok := oMap[k]; !ok || oMap[k] != v {
+			addTags = append(addTags, map[string]interface{}{
+				"key":   k,
+				"value": v,
+			})
+		}
+	}
+
+	return removeTags, addTags
+}
+
+func buildCreateMicroserviceEngineTagsBodyParams(tags []interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"tags": tags,
+	}
+}
+
+func createMicroserviceEngineTags(client *golangsdk.ServiceClient, engineId, epsId string, tags []interface{}) (interface{}, error) {
+	httpUrl := "v2/{project_id}/{resource_type}/{resource_id}/tags/create"
+	createPath := client.Endpoint + httpUrl
+	createPath = strings.ReplaceAll(createPath, "{project_id}", client.ProjectID)
+	createPath = strings.ReplaceAll(createPath, "{resource_type}", MicroserviceEngineTagsResourceType)
+	createPath = strings.ReplaceAll(createPath, "{resource_id}", engineId)
+
+	createOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      buildRequestMoreHeaders(epsId),
+		JSONBody:         utils.RemoveNil(buildCreateMicroserviceEngineTagsBodyParams(tags)),
+		OkCodes:          []int{204},
+	}
+
+	_, err := client.Request("POST", createPath, &createOpt)
+	return nil, err
+}
+
+func buildDeleteMicroserviceEngineTagsBodyParams(tags []interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"tags": tags,
+	}
+}
+
+func deleteMicroserviceEngineTags(client *golangsdk.ServiceClient, engineId, epsId string, tags []interface{}) (interface{}, error) {
+	httpUrl := "v2/{project_id}/{resource_type}/{resource_id}/tags/delete"
+	deletePath := client.Endpoint + httpUrl
+	deletePath = strings.ReplaceAll(deletePath, "{project_id}", client.ProjectID)
+	deletePath = strings.ReplaceAll(deletePath, "{resource_type}", MicroserviceEngineTagsResourceType)
+	deletePath = strings.ReplaceAll(deletePath, "{resource_id}", engineId)
+
+	deleteOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      buildRequestMoreHeaders(epsId),
+		JSONBody:         utils.RemoveNil(buildDeleteMicroserviceEngineTagsBodyParams(tags)),
+		OkCodes:          []int{204},
+	}
+
+	_, err := client.Request("DELETE", deletePath, &deleteOpt)
+	return nil, err
+}
+
+func updateMicroserviceEngineTags(client *golangsdk.ServiceClient, d *schema.ResourceData, engineId, epsId string) error {
+	removeTags, addTags := getMicroserviceEngineTagsChange(d)
+
+	if len(removeTags) > 0 {
+		_, err := deleteMicroserviceEngineTags(client, engineId, epsId, removeTags)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(addTags) > 0 {
+		_, err := createMicroserviceEngineTags(client, engineId, epsId, addTags)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func resourceMicroserviceEngineCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var (
 		cfg                 = meta.(*config.Config)
@@ -406,6 +509,13 @@ func resourceMicroserviceEngineCreate(ctx context.Context, d *schema.ResourceDat
 	_, err = stateConf.WaitForStateContext(ctx)
 	if err != nil {
 		return diag.Errorf("error waiting for the creation of microservice engine (%s) to complete: %s", engineId, err)
+	}
+
+	if d.HasChange("tags") {
+		err = updateMicroserviceEngineTags(cseClient, d, engineId, enterpriseProjectId)
+		if err != nil {
+			return diag.Errorf("error updating microservice engine tags: %s", err)
+		}
 	}
 
 	return resourceMicroserviceEngineRead(ctx, d, meta)
@@ -487,6 +597,7 @@ func resourceMicroserviceEngineRead(_ context.Context, d *schema.ResourceData, m
 		d.Set("description", utils.PathSearch("description", respBody, "").(string)),
 		d.Set("eip_id", utils.PathSearch("reference.publicIpId", respBody, "").(string)),
 		d.Set("extend_params", utils.PathSearch("reference.inputs", respBody, map[string]interface{}{}).(map[string]interface{})),
+		d.Set("tags", utils.FlattenTagsToMap(utils.PathSearch("tags", respBody, make([]interface{}, 0)).([]interface{}))),
 		// Attributes.
 		d.Set("service_registry_addresses", flattenServiceRegistryAddresses(utils.PathSearch("externalEntrypoint",
 			respBody, make(map[string]interface{})).(map[string]interface{}))),
@@ -527,8 +638,57 @@ func resourceMicroserviceEngineRead(_ context.Context, d *schema.ResourceData, m
 	return diagErr
 }
 
-func resourceMicroserviceEngineUpdate(_ context.Context, _ *schema.ResourceData, _ interface{}) diag.Diagnostics {
-	return nil
+func buildUpdateMicroserviceEngineBodyParams(d *schema.ResourceData) map[string]interface{} {
+	return map[string]interface{}{
+		// The description does not support changing an empty string, so we need to pass a null value.
+		"description": utils.ValueIgnoreEmpty(d.Get("description").(string)),
+	}
+}
+
+func updateMicroserviceEngine(client *golangsdk.ServiceClient, d *schema.ResourceData, engineId, epsId string) (interface{}, error) {
+	httpUrl := "v2/{project_id}/enginemgr/engines/{engine_id}"
+	updatePath := client.Endpoint + httpUrl
+	updatePath = strings.ReplaceAll(updatePath, "{project_id}", client.ProjectID)
+	updatePath = strings.ReplaceAll(updatePath, "{engine_id}", engineId)
+
+	updateOpt := golangsdk.RequestOpts{
+		KeepResponseBody: true,
+		MoreHeaders:      buildRequestMoreHeaders(epsId),
+		JSONBody:         utils.RemoveNil(buildUpdateMicroserviceEngineBodyParams(d)),
+	}
+
+	_, err := client.Request("PUT", updatePath, &updateOpt)
+	return nil, err
+}
+
+func resourceMicroserviceEngineUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var (
+		cfg                 = meta.(*config.Config)
+		region              = cfg.GetRegion(d)
+		engineId            = d.Id()
+		enterpriseProjectId = cfg.GetEnterpriseProjectID(d)
+	)
+
+	client, err := cfg.NewServiceClient("cse", region)
+	if err != nil {
+		return diag.Errorf("error creating CSE client: %s", err)
+	}
+
+	if d.HasChange("description") {
+		_, err := updateMicroserviceEngine(client, d, engineId, enterpriseProjectId)
+		if err != nil {
+			return diag.Errorf("error updating microservice engine: %s", err)
+		}
+	}
+
+	if d.HasChange("tags") {
+		err = updateMicroserviceEngineTags(client, d, engineId, enterpriseProjectId)
+		if err != nil {
+			return diag.Errorf("error updating microservice engine tags: %s", err)
+		}
+	}
+
+	return resourceMicroserviceEngineRead(ctx, d, meta)
 }
 
 func deleteMicroserviceEngine(client *golangsdk.ServiceClient, engineId, epsId string) (interface{}, error) {

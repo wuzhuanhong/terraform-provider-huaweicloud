@@ -30,6 +30,10 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   availability_zones = var.availability_zones
   auth_type          = "RBAC"
   admin_pass         = var.manager_password
+
+  tags = {
+    owner = "terraform"
+  }
 }
 ```
 
@@ -45,6 +49,10 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   network_id = var.network_id
   auth_type  = "NONE"
   version    = "Nacos2"
+
+  tags = {
+    owner = "terraform"
+  }
 }
 ```
 
@@ -102,7 +110,7 @@ The following arguments are supported:
   microservice engine belongs.  
   If omitted and the version is **Nacos2**, the default enterprise project will be used.
 
-* `description` - (Optional, String, NonUpdatable) Specifies the description of the microservice engine.
+* `description` - (Optional, String) Specifies the description of the microservice engine.  
   The description can contain a maximum of `255` characters.
 
 * `eip_id` - (Optional, String, NonUpdatable) Specifies the EIP ID bound to the microservice engine.
@@ -113,6 +121,8 @@ The following arguments are supported:
   The specific parameters are subject to the state of the microservice engine.  
   This parameter will be affected by these parameters and will appear when `terraform plan` or `terraform apply`.  
   If it is inconsistent with the script configuration, it can be ignored by `ignore_changes` in non-change scenarios.
+
+* `tags` - (Optional, Map) Specifies the key/value pairs to associate with the microservice engine.
 
 ## Attribute Reference
 

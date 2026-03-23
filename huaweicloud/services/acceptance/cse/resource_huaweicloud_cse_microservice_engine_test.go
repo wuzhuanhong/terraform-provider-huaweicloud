@@ -55,7 +55,7 @@ func TestAccMicroserviceEngine_basic(t *testing.T) {
 		CheckDestroy: rc.CheckResourceDestroy(),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccMicroserviceEngine_basic(name),
+				Config: testAccMicroserviceEngine_basic_step1(name),
 				Check: resource.ComposeTestCheckFunc(
 					rc.CheckResourceExists(),
 					resource.TestCheckResourceAttr(resourceName, "name", name),
@@ -72,6 +72,19 @@ func TestAccMicroserviceEngine_basic(t *testing.T) {
 					resource.TestCheckResourceAttrSet(resourceName, "service_limit"),
 					resource.TestCheckResourceAttrSet(resourceName, "service_registry_addresses.0.private"),
 					resource.TestCheckResourceAttrSet(resourceName, "config_center_addresses.0.private"),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.foo", "bar"),
+					resource.TestCheckResourceAttr(resourceName, "tags.key", "value"),
+				),
+			},
+			{
+				Config: testAccMicroserviceEngine_basic_step2(name),
+				Check: resource.ComposeTestCheckFunc(
+					rc.CheckResourceExists(),
+					resource.TestCheckResourceAttr(resourceName, "description", "Updated by terraform test"),
+					resource.TestCheckResourceAttr(resourceName, "tags.%", "2"),
+					resource.TestCheckResourceAttr(resourceName, "tags.foo", "baar"),
+					resource.TestCheckResourceAttr(resourceName, "tags.owner", "terraform"),
 				),
 			},
 			{
@@ -105,6 +118,11 @@ func testAccMicroserviceEngineImportStateFunc(rName string) resource.ImportState
 
 func testAccMicroserviceEngine_base(name string) string {
 	return fmt.Sprintf(`
+variable "eip_id" {
+  type    = string
+  default = "%[1]s"
+}
+
 resource "random_string" "test" {
   length           = 16
   min_numeric      = 1
@@ -120,26 +138,11 @@ data "huaweicloud_cse_microservice_engine_flavors" "test" {
   version = "CSE2"
 }
 
-%[1]s
-
-resource "huaweicloud_vpc_eip" "test" {
-  enterprise_project_id = huaweicloud_vpc.test.enterprise_project_id != "" ? huaweicloud_vpc.test.enterprise_project_id : null
-
-  publicip {
-    type = "5_bgp"
-  }
-
-  bandwidth {
-    share_type  = "PER"
-    size        = 5
-    name        = "%[2]s"
-    charge_mode = "traffic"
-  }
-}
-`, common.TestVpc(name, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST), name)
+%[2]s
+`, acceptance.HW_EIP_ID, common.TestVpc(name, acceptance.HW_ENTERPRISE_PROJECT_ID_TEST))
 }
 
-func testAccMicroserviceEngine_basic(name string) string {
+func testAccMicroserviceEngine_basic_step1(name string) string {
 	return fmt.Sprintf(`
 %[1]s
 
@@ -148,13 +151,43 @@ resource "huaweicloud_cse_microservice_engine" "test" {
   description           = "Created by terraform test"
   flavor                = data.huaweicloud_cse_microservice_engine_flavors.test.flavors[0].id
   network_id            = huaweicloud_vpc_subnet.test.id
-  # eip_id                = huaweicloud_vpc_eip.test.id
+  eip_id                = var.eip_id != "" ? var.eip_id : null
   availability_zones    = slice(data.huaweicloud_availability_zones.test.names, 0, 1)
   enterprise_project_id = huaweicloud_vpc.test.enterprise_project_id != "" ? huaweicloud_vpc.test.enterprise_project_id : null
 
   auth_type  = "RBAC"
   admin_pass = format("pwdPrefix%%s", random_string.test.result) // Avoid the password starting with a special character
-}`, testAccMicroserviceEngine_base(name), name)
+
+  tags = {
+    foo = "bar"
+    key = "value"
+  }
+}
+`, testAccMicroserviceEngine_base(name), name)
+}
+
+func testAccMicroserviceEngine_basic_step2(name string) string {
+	return fmt.Sprintf(`
+%[1]s
+
+resource "huaweicloud_cse_microservice_engine" "test" {
+  name                  = "%[2]s"
+  description           = "Updated by terraform test"
+  flavor                = data.huaweicloud_cse_microservice_engine_flavors.test.flavors[0].id
+  network_id            = huaweicloud_vpc_subnet.test.id
+  eip_id                = var.eip_id != "" ? var.eip_id : null
+  availability_zones    = slice(data.huaweicloud_availability_zones.test.names, 0, 1)
+  enterprise_project_id = huaweicloud_vpc.test.enterprise_project_id != "" ? huaweicloud_vpc.test.enterprise_project_id : null
+  
+  auth_type  = "RBAC"
+  admin_pass = format("pwdPrefix%%s", random_string.test.result) // Avoid the password starting with a special character
+
+  tags = {
+    foo   = "baar"
+    owner = "terraform"
+  }
+}
+`, testAccMicroserviceEngine_base(name), name)
 }
 
 func TestAccMicroserviceEngine_nacos(t *testing.T) {
